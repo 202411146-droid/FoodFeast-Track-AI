@@ -48,8 +48,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const { data: { session } } = await db.auth.getSession();
   if (session) {
-    currentUser = session.user;
-    enterApp();
+    // Only restore session if the user's email is verified
+    if (session.user.email_confirmed_at) {
+      currentUser = session.user;
+      enterApp();
+    } else {
+      await db.auth.signOut();
+    }
   }
 
   db.auth.onAuthStateChange((event, session) => {
@@ -60,8 +65,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     currentUser = session?.user ?? null;
-    if (currentUser) enterApp();
-    else leaveApp();
+    // Only enter the app if the user's email has been verified
+    if (currentUser && currentUser.email_confirmed_at) enterApp();
+    else if (!currentUser) leaveApp();
   });
 });
 
@@ -78,12 +84,29 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
 
-  const { error } = await db.auth.signInWithPassword({ email, password });
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
 
   btn.textContent = 'Sign In';
   btn.disabled = false;
 
-  if (error) errEl.textContent = error.message;
+  if (error) {
+    errEl.textContent = error.message;
+    return;
+  }
+
+  // Block login if email has not been verified yet
+  const user = data?.user;
+  if (user && !user.email_confirmed_at) {
+    // Sign them back out immediately so they can't access the app
+    await db.auth.signOut();
+    // Store email so they can resend from the verify screen
+    window._pendingVerifyEmail = email;
+    // Show the email verification screen
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('verifyScreen').classList.remove('hidden');
+    document.getElementById('verifyEmailAddr').textContent = email;
+    return;
+  }
 }
 
 // ── AUTH: SIGN UP ─────────────────────────────────────────────

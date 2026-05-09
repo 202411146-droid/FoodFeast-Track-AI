@@ -6,8 +6,14 @@
 // ── CONFIGURATION ────────────────────────────────────────────
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://ywfyqxycrcynpkgozmuj.supabase.co';
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZnlxeHljcmN5bnBrZ296bXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDgwNDksImV4cCI6MjA5Mzg4NDA0OX0.QvZzWcfDQVyQ4QA4LI8dMDGcViM6iFv-SOSoWLGzmZ8';
+// Keys must be set as Railway environment variables - no hardcoded fallbacks to avoid mismatch
+const SUPABASE_URL = window.ENV?.SUPABASE_URL;
+const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;text-align:center"><h2>Configuration Error</h2><p>SUPABASE_URL and SUPABASE_ANON_KEY environment variables are not set in Railway.</p></div>';
+  throw new Error('Missing Supabase environment variables');
+}
 
 // Replace with your Anthropic API key (or set in Railway variables)
 const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
@@ -104,7 +110,22 @@ async function doSignUp() {
         errEl.textContent = msg;
       }
     } else {
-      // Show email verification pending screen
+      // Send verification email via our server (Brevo SMTP)
+      // We send a sign-in magic link so user clicks it and gets logged in directly
+      try {
+        const { data: linkData, error: linkError } = await db.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false }
+        });
+        const confirmUrl = window.location.origin;
+        await fetch('/api/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, confirmationUrl: confirmUrl })
+        });
+      } catch (e) {
+        console.warn('Could not send custom email:', e);
+      }
       showVerifyScreen(email);
     }
   } catch (err) {

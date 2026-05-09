@@ -110,23 +110,19 @@ async function doSignUp() {
         errEl.textContent = msg;
       }
     } else {
-      // Send verification email via our server (Brevo SMTP)
-      // We send a sign-in magic link so user clicks it and gets logged in directly
+      // Account created — send welcome email via Brevo and enter app
       try {
-        const { data: linkData, error: linkError } = await db.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false }
-        });
-        const confirmUrl = window.location.origin;
         await fetch('/api/send-verification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, confirmationUrl: confirmUrl })
+          body: JSON.stringify({ email, confirmationUrl: window.location.origin })
         });
       } catch (e) {
-        console.warn('Could not send custom email:', e);
+        console.warn('Could not send welcome email:', e);
       }
-      showVerifyScreen(email);
+      // No email confirmation needed — user is logged in immediately
+      showToast('Account created! Welcome to FoodFeast!');
+      switchAuthTab('signin');
     }
   } catch (err) {
     errEl.textContent = 'Something went wrong. Please try again.';

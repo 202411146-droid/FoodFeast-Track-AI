@@ -10,7 +10,7 @@ const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.s
 const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
 
 // Replace with your Anthropic API key (or set in Railway variables)
-const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY || 'sb_publishable_nM_4xl4TimBBm8esP8MK5g_gN5cLNu_';
+const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
 
 // ── INIT ─────────────────────────────────────────────────────
 const { createClient } = supabase;
@@ -409,6 +409,11 @@ function handleFileUpload(event) {
 
 // ── AI IMAGE ANALYSIS (Claude) ────────────────────────────────
 async function analyzeImage(base64Data) {
+  if (!ANTHROPIC_API_KEY) {
+    showToast('Anthropic API key not configured. Set ANTHROPIC_API_KEY in Railway variables.', 'danger');
+    return;
+  }
+
   showScanProgress(true);
 
   try {
@@ -421,7 +426,7 @@ async function analyzeImage(base64Data) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 400,
         messages: [{
           role: 'user',
@@ -543,6 +548,11 @@ function runDemoScan() {
 
 // ── RECIPE GENERATION (Claude) ────────────────────────────────
 async function generateRecipes() {
+  if (!ANTHROPIC_API_KEY) {
+    showToast('Anthropic API key not configured. Set ANTHROPIC_API_KEY in Railway variables.', 'danger');
+    return;
+  }
+
   if (pantryItems.length === 0) {
     showToast('Add items to your pantry first!', 'danger');
     return;
@@ -575,7 +585,7 @@ async function generateRecipes() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1800,
         messages: [{
           role: 'user',

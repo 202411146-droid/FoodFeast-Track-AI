@@ -7,7 +7,7 @@
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
 const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://ywfyqxycrcynpkgozmuj.supabase.co';
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
+const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZnlxeHljcmN5bnBrZ296bXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDgwNDksImV4cCI6MjA5Mzg4NDA0OX0.QvZzWcfDQVyQ4QA4LI8dMDGcViM6iFv-SOSoWLGzmZ8';
 
 // Replace with your Anthropic API key (or set in Railway variables)
 const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;

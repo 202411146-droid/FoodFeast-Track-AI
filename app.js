@@ -84,10 +84,20 @@ async function doSignUp() {
   btn.disabled = false;
 
   if (error) {
-    // The whitelist trigger raises a postgres exception — surface it cleanly
-    errEl.textContent = error.message.includes('not authorized')
-      ? 'This email is not on the access list. Contact the admin.'
-      : error.message;
+    // Supabase surfaces trigger/DB failures as "Database error saving new user"
+    // This happens when the email isn't in the allowed_emails whitelist
+    const msg = error.message || '';
+    if (
+      msg.toLowerCase().includes('database error') ||
+      msg.toLowerCase().includes('not authorized') ||
+      msg.toLowerCase().includes('saving new user')
+    ) {
+      errEl.textContent = 'This email is not on the access list. Contact the admin to get access.';
+    } else if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
+      errEl.textContent = 'An account with this email already exists. Try signing in instead.';
+    } else {
+      errEl.textContent = msg;
+    }
   } else {
     showToast('Account created! Check your email to confirm, then sign in.');
     switchAuthTab('signin');

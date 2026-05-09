@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodFeast Track AI</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authScreen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">FoodFeast <span>Track AI</span></div>
+    <p class="auth-sub">Personalized nutrition &amp; food waste reduction</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabSignIn" onclick="switchAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="tabSignUp" onclick="switchAuthTab('signup')">Create Account</button>
+    </div>
+    <!-- SIGN IN -->
+    <div id="formSignIn">
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="loginEmail" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter') document.getElementById('loginPass').focus()" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="pass-wrap">
+          <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" />
+          <button class="eye-btn" type="button" onclick="togglePass('loginPass',this)">👁</button>
+        </div>
+      </div>
+      <p class="err-msg" id="loginErr"></p>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+      <p class="auth-hint">Demo: <strong>hishikkyle@gmail.com</strong> / <strong>demo1234</strong></p>
+    </div>
+    <!-- SIGN UP -->
+    <div id="formSignUp" class="hidden">
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="signupEmail" placeholder="yourname@gmail.com" />
+      </div>
+      <div class="field">
+        <label>Password <span style="color:var(--muted);font-size:11px">(min. 6 characters)</span></label>
+        <div class="pass-wrap">
+          <input type="password" id="signupPass" placeholder="••••••••" />
+          <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)">👁</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Confirm password</label>
+        <div class="pass-wrap">
+          <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter') doSignUp()" />
+          <button class="eye-btn" type="button" onclick="togglePass('signupConfirm',this)">👁</button>
+        </div>
+      </div>
+      <div class="tos-row">
+        <input type="checkbox" id="tosCheck" />
+        <span>I agree to the <a href="#" onclick="showModal('tosModal');return false;">Terms of Service</a> and <a href="#" onclick="showModal('privacyModal');return false;">Privacy Policy</a></span>
+      </div>
+      <p class="err-msg" id="signupErr"></p>
+      <button class="btn-primary" id="signupBtn" onclick="doSignUp()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="app hidden">
+  <nav class="nav">
+    <div class="nav-brand">FoodFeast <span>Track AI</span></div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('dashboard',this)">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('scan',this)">Scan Food</button>
+      <button class="tab-btn" onclick="switchTab('pantry',this)">Pantry</button>
+      <button class="tab-btn" onclick="switchTab('recipes',this)">Recipes</button>
+    </div>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">K</div>
+      <span id="userEmailDisplay"></span>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+  <main>
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="page-header">
+        <h1 id="dashGreeting">Good morning ✦</h1>
+        <p class="page-sub">Here's your pantry health at a glance</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Items</div><div class="stat-val" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="stat-label">Expiring Soon</div><div class="stat-val red" id="statExpiring">0</div></div>
+        <div class="stat-card"><div class="stat-label">Recipes Ready</div><div class="stat-val green" id="statRecipes">0</div></div>
+        <div class="stat-card"><div class="stat-label">Items Scanned</div><div class="stat-val yellow" id="statScanned">0</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Expiring soon <span class="card-subtitle">next 7 days</span></div>
+          <div id="expiryList"><p class="empty-state">No items expiring soon 🎉</p></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent activity</div>
+          <div id="activityList"><p class="empty-state">No recent activity yet</p></div>
+        </div>
+      </div>
+    </div>
+    <!-- SCAN -->
+    <div id="tab-scan" class="tab-content">
+      <div class="page-header"><h1>Scan Food Items</h1><p class="page-sub">Use AI vision to identify groceries and log them instantly</p></div>
+      <div class="scan-layout">
+        <div class="scan-left">
+          <div class="camera-box" id="cameraBox">
+            <div class="camera-frame">
+              <div class="corner tl"></div><div class="corner tr"></div>
+              <div class="corner bl"></div><div class="corner br"></div>
+              <div class="cam-icon">📷</div>
+            </div>
+            <p class="scan-hint">Point camera at food items or upload a photo</p>
+          </div>
+          <video id="videoEl" autoplay muted playsinline></video>
+          <canvas id="canvasEl"></canvas>
+          <div class="scan-progress hidden" id="scanProgress">
+            <p class="scan-analyzing">Analyzing with AI vision...</p>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <p class="scan-model">MobileNet v3 · TensorFlow.js</p>
+          </div>
+        </div>
+        <div class="scan-controls">
+          <button class="btn-scan" id="camToggleBtn" onclick="toggleCamera()">▶ Start Camera</button>
+          <button class="btn-scan secondary" onclick="document.getElementById('fileInput').click()">↑ Upload Photo</button>
+          <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event)" />
+          <div class="divider"><span>or</span></div>
+          <button class="btn-outline" onclick="runDemoScan()">Run Demo Scan</button>
+          <div id="detectedSection" class="hidden">
+            <p class="det-label">Detected Items — tap to select</p>
+            <div id="foodTags"></div>
+            <button class="btn-scan" style="margin-top:14px;width:100%" onclick="addSelectedToPantry()">+ Add Selected to Pantry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- PANTRY -->
+    <div id="tab-pantry" class="tab-content">
+      <div class="page-header"><h1>My Pantry</h1><p class="page-sub">Your current food inventory</p></div>
+      <div class="pantry-toolbar">
+        <input class="search-box" placeholder="Search items..." oninput="filterPantry(this.value)" id="pantrySearch" />
+        <select class="filter-select" onchange="filterByCategory(this.value)" id="catFilter">
+          <option value="all">All categories</option>
+          <option value="produce">Produce</option>
+          <option value="dairy">Dairy</option>
+          <option value="protein">Protein</option>
+          <option value="grain">Grains</option>
+          <option value="other">Other</option>
+        </select>
+        <button class="btn-add" onclick="openAddModal()">+ Add Item</button>
+      </div>
+      <div class="pantry-grid" id="pantryGrid"><p class="empty-state">Your pantry is empty. Add items or scan food!</p></div>
+    </div>
+    <!-- RECIPES -->
+    <div id="tab-recipes" class="tab-content">
+      <div class="page-header"><h1>Smart Recipes</h1><p class="page-sub">Meals optimized for ingredients nearing expiry</p></div>
+      <div class="recipe-toolbar">
+        <button class="btn-generate" onclick="generateRecipes()">✦ Generate from my pantry</button>
+        <span class="recipe-note" id="recipeNote"></span>
+      </div>
+      <div class="recipe-grid" id="recipeGrid"><p class="empty-state">Click "Generate" to get recipe suggestions!</p></div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD ITEM MODAL -->
+<div class="modal-backdrop hidden" id="addItemModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addItemModal')">✕</button>
+    <h2>Add Pantry Item</h2>
+    <div class="form-row">
+      <div class="field-sm"><label>Item name</label><input id="mName" placeholder="e.g. Spinach" /></div>
+      <div class="field-sm"><label>Category</label>
+        <select id="mCat">
+          <option value="produce">🥬 Produce</option>
+          <option value="dairy">🧀 Dairy</option>
+          <option value="protein">🥩 Protein</option>
+          <option value="grain">🌾 Grain</option>
+          <option value="other">🥫 Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field-sm"><label>Quantity</label><input id="mQty" placeholder="e.g. 2 bags" /></div>
+      <div class="field-sm"><label>Expiry date</label><input id="mExp" type="date" /></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal('addItemModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveItem()">Add to Pantry</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECIPE DETAIL MODAL -->
+<div class="modal-backdrop hidden" id="recipeModal">
+  <div class="modal modal-wide">
+    <button class="modal-close" onclick="closeModal('recipeModal')">✕</button>
+    <div id="recipeModalContent"></div>
+  </div>
+</div>
+
+<!-- TOS MODAL -->
+<div class="modal-backdrop hidden" id="tosModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('tosModal')">✕</button>
+    <h2>Terms of Service</h2>
+    <div class="legal-text">
+      <p>By using FoodFeast Track AI, you agree to the following terms:</p>
+      <p><strong>1. Use of Service</strong><br>This application is for personal food tracking and nutrition management only.</p>
+      <p><strong>2. Data Storage</strong><br>Your pantry data is stored securely in Supabase. We do not sell your data.</p>
+      <p><strong>3. AI Accuracy</strong><br>Food recognition is experimental. Always verify AI-detected items before adding them.</p>
+      <p><strong>4. Access Control</strong><br>Access is restricted to authorized email addresses.</p>
+      <p><strong>5. Limitation of Liability</strong><br>FoodFeast Track AI is not responsible for food safety decisions made using this app.</p>
+    </div>
+    <button class="btn-primary" onclick="closeModal('tosModal')">I Understand</button>
+  </div>
+</div>
+
+<!-- PRIVACY MODAL -->
+<div class="modal-backdrop hidden" id="privacyModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('privacyModal')">✕</button>
+    <h2>Privacy Policy</h2>
+    <div class="legal-text">
+      <p><strong>Data We Collect</strong><br>Only the data you provide: food items, expiry dates, and usage patterns.</p>
+      <p><strong>Camera Access</strong><br>Used solely for food recognition. No images stored or transmitted without consent.</p>
+      <p><strong>Supabase</strong><br>Data synced to your personal Supabase project under your credentials.</p>
+      <p><strong>No Tracking</strong><br>We do not use analytics, ads, or third-party tracking tools.</p>
+    </div>
+    <button class="btn-primary" onclick="closeModal('privacyModal')">Close</button>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

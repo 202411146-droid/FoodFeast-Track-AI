@@ -30,8 +30,14 @@ app.post('/api/send-verification', async (req, res) => {
     return res.status(400).json({ error: 'Missing email or confirmationUrl' });
   }
 
+  // Debug: log what env vars are available (remove after testing)
+  console.log('BREVO_SMTP_USER:', process.env.BREVO_SMTP_USER ? 'SET' : 'MISSING');
+  console.log('BREVO_SMTP_PASS:', process.env.BREVO_SMTP_PASS ? 'SET' : 'MISSING');
+  console.log('BREVO_SENDER_EMAIL:', process.env.BREVO_SENDER_EMAIL || 'MISSING');
+  console.log('Sending to:', email);
+
   if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
-    return res.status(500).json({ error: 'SMTP not configured' });
+    return res.status(500).json({ error: 'SMTP not configured - BREVO_SMTP_USER or BREVO_SMTP_PASS missing' });
   }
 
   try {

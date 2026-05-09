@@ -52,7 +52,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     enterApp();
   }
 
-  db.auth.onAuthStateChange((_event, session) => {
+  db.auth.onAuthStateChange((event, session) => {
+    // Ignore the automatic SIGNED_IN that fires right after signUp()
+    // We only want to enter the app on explicit sign-in, not registration
+    if (event === 'SIGNED_IN' && window._justSignedUp) {
+      window._justSignedUp = false;
+      return;
+    }
     currentUser = session?.user ?? null;
     if (currentUser) enterApp();
     else leaveApp();
@@ -110,7 +116,10 @@ async function doSignUp() {
         errEl.textContent = msg;
       }
     } else {
-      // Account created — send welcome email via Brevo and enter app
+      // Flag so onAuthStateChange doesn't auto-enter app after signup
+      window._justSignedUp = true;
+
+      // Send welcome email via Brevo
       try {
         await fetch('/api/send-verification', {
           method: 'POST',
@@ -120,8 +129,10 @@ async function doSignUp() {
       } catch (e) {
         console.warn('Could not send welcome email:', e);
       }
-      // No email confirmation needed — user is logged in immediately
-      showToast('Account created! Welcome to FoodFeast!');
+
+      // Sign the user back out so they must explicitly log in
+      await db.auth.signOut();
+      showToast('Account created! Please sign in.');
       switchAuthTab('signin');
     }
   } catch (err) {

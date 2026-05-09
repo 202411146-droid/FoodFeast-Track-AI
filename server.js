@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const nodemailer = require('nodemailer');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,16 +11,45 @@ app.use(express.static(path.join(__dirname), {
   index: false  // Prevent express from serving index.html directly so our route can inject ENV
 }));
 
-// ── EMAIL TRANSPORTER (Brevo SMTP) ────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-  port: parseInt(process.env.BREVO_SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
-});
+// ── EMAIL via Brevo HTTP API (avoids SMTP port blocking) ─────
+async function sendBrevoEmail(to, subject, htmlContent) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      sender: {
+        name: process.env.BREVO_SENDER_NAME || 'FoodFeast Track AI',
+        email: process.env.BREVO_SENDER_EMAIL
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent
+    });
+
+    const req = https.request({
+      hostname: 'api.brevo.com',
+      path: '/v3/smtp/email',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Length': Buffer.byteLength(body)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(JSON.parse(data));
+        } else {
+          reject(new Error(`Brevo API error ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 // ── SEND VERIFICATION EMAIL ───────────────────────────────────
 app.post('/api/send-verification', async (req, res) => {
@@ -31,21 +60,16 @@ app.post('/api/send-verification', async (req, res) => {
   }
 
   // Debug: log what env vars are available (remove after testing)
-  console.log('BREVO_SMTP_USER:', process.env.BREVO_SMTP_USER ? 'SET' : 'MISSING');
-  console.log('BREVO_SMTP_PASS:', process.env.BREVO_SMTP_PASS ? 'SET' : 'MISSING');
+  console.log('BREVO_API_KEY:', process.env.BREVO_API_KEY ? 'SET' : 'MISSING');
   console.log('BREVO_SENDER_EMAIL:', process.env.BREVO_SENDER_EMAIL || 'MISSING');
   console.log('Sending to:', email);
 
-  if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
-    return res.status(500).json({ error: 'SMTP not configured - BREVO_SMTP_USER or BREVO_SMTP_PASS missing' });
+  if (!process.env.BREVO_API_KEY) {
+    return res.status(500).json({ error: 'BREVO_API_KEY not configured' });
   }
 
   try {
-    await transporter.sendMail({
-      from: `"${process.env.BREVO_SENDER_NAME || 'FoodFeast Track AI'}" <${process.env.BREVO_SENDER_EMAIL || process.env.BREVO_SMTP_USER}>`,
-      to: email,
-      subject: 'Welcome to FoodFeast Track AI!',
-      html: `
+    await sendBrevoEmail(email, 'Welcome to FoodFeast Track AI!', `
         <!DOCTYPE html>
         <html>
         <head><meta charset="UTF-8"></head>
@@ -77,8 +101,7 @@ app.post('/api/send-verification', async (req, res) => {
           </div>
         </body>
         </html>
-      `,
-    });
+      `);
 
     res.json({ success: true });
   } catch (err) {

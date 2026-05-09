@@ -6,8 +6,8 @@
 // ── CONFIGURATION ────────────────────────────────────────────
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://ywfyqxycrcynpkgozmuj.supabase.co';
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3ZnlxeHljcmN5bnBrZ296bXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDgwNDksImV4cCI6MjA5Mzg4NDA0OX0.QvZzWcfDQVyQ4QA4LI8dMDGcViM6iFv-SOSoWLGzmZ8';
+const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.supabase.co';
+const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
 
 // Replace with your Anthropic API key (or set in Railway variables)
 const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
@@ -25,6 +25,21 @@ let scanCount    = 0;
 
 // ── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Handle email confirmation redirect from Supabase
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (accessToken) {
+      const { error } = await db.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (!error) {
+        window.history.replaceState(null, '', window.location.pathname);
+        showToast('Email confirmed! Welcome to FoodFeast!');
+      }
+    }
+  }
+
   const { data: { session } } = await db.auth.getSession();
   if (session) {
     currentUser = session.user;
@@ -79,7 +94,7 @@ async function doSignUp() {
   btn.disabled = true;
 
   try {
-    const { error } = await db.auth.signUp({ email, password });
+    const { data, error } = await db.auth.signUp({ email, password });
 
     if (error) {
       const msg = error.message || '';
@@ -89,8 +104,8 @@ async function doSignUp() {
         errEl.textContent = msg;
       }
     } else {
-      showToast('Account created! Check your email to confirm, then sign in.');
-      switchAuthTab('signin');
+      // Show email verification pending screen
+      showVerifyScreen(email);
     }
   } catch (err) {
     errEl.textContent = 'Something went wrong. Please try again.';
@@ -98,6 +113,41 @@ async function doSignUp() {
     btn.textContent = 'Create Account';
     btn.disabled = false;
   }
+}
+
+// ── EMAIL VERIFY SCREEN ──────────────────────────────────────
+function showVerifyScreen(email) {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('verifyScreen').classList.remove('hidden');
+  document.getElementById('verifyEmailAddr').textContent = email;
+  // Store email for resend
+  window._pendingVerifyEmail = email;
+  window._pendingVerifyPassword = document.getElementById('signupPass').value;
+}
+
+async function resendVerification() {
+  const btn = document.getElementById('resendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  const { error } = await db.auth.resend({
+    type: 'signup',
+    email: window._pendingVerifyEmail
+  });
+  if (error) {
+    showToast('Failed to resend: ' + error.message, 'danger');
+  } else {
+    showToast('Verification email resent!');
+  }
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Resend Email';
+  }, 5000);
+}
+
+function backToSignIn() {
+  document.getElementById('verifyScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  switchAuthTab('signin');
 }
 
 // ── AUTH: SIGN OUT ────────────────────────────────────────────

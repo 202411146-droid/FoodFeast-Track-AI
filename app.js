@@ -109,7 +109,9 @@ async function doLogin() {
   }
 }
 
-// ── AUTH: SIGN UP ─────────────────────────────────────────────
+// ── AUTH: SIGN UP — Step 1: validate form & send OTP ─────────
+// No account is created here. Nothing touches the database.
+// We just validate the form, then fire /api/send-otp.
 async function doSignUp() {
   const email    = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPass').value;
@@ -125,73 +127,138 @@ async function doSignUp() {
   if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
-  btn.textContent = 'Creating account...';
+  btn.textContent = 'Sending code…';
   btn.disabled = true;
 
   try {
-    const { data, error } = await db.auth.signUp({ email, password });
+    const resp = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const result = await resp.json();
+
+    if (!resp.ok || !result.success) {
+      errEl.textContent = result.error || 'Could not send verification email. Please try again.';
+      return;
+    }
+
+    // Store credentials temporarily in memory — NOT in DB yet
+    window._pendingVerifyEmail    = email;
+    window._pendingVerifyPassword = password;
+
+    // Show OTP entry screen
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('verifyScreen').classList.remove('hidden');
+    document.getElementById('verifyEmailAddr').textContent = email;
+    document.getElementById('otpInput').value = '';
+    document.getElementById('otpErr').textContent = '';
+
+  } catch (err) {
+    errEl.textContent = 'Network error. Please check your connection.';
+  } finally {
+    btn.textContent = 'Send Verification Code';
+    btn.disabled = false;
+  }
+}
+
+// ── AUTH: SIGN UP — Step 2: verify OTP, THEN create account ──
+// Only after the server confirms the OTP is correct do we call
+// db.auth.signUp(). This is the first moment any DB record is created.
+async function confirmOTP() {
+  const otp   = document.getElementById('otpInput').value.trim();
+  const errEl = document.getElementById('otpErr');
+  const btn   = document.getElementById('otpBtn');
+
+  errEl.textContent = '';
+  if (!otp || otp.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
+
+  btn.textContent = 'Verifying…';
+  btn.disabled = true;
+
+  try {
+    // Step A: confirm OTP with server
+    const resp = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: window._pendingVerifyEmail, otp })
+    });
+    const result = await resp.json();
+
+    if (!resp.ok || !result.verified) {
+      errEl.textContent = result.error || 'Invalid code. Please try again.';
+      btn.textContent = 'Verify & Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    // Step B: OTP confirmed — NOW create the account in Supabase
+    btn.textContent = 'Creating account…';
+    window._justSignedUp = true;
+
+    const { error } = await db.auth.signUp({
+      email: window._pendingVerifyEmail,
+      password: window._pendingVerifyPassword
+    });
 
     if (error) {
       const msg = error.message || '';
       if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
-        errEl.textContent = 'An account with this email already exists. Try signing in instead.';
+        errEl.textContent = 'An account with this email already exists. Please sign in.';
       } else {
         errEl.textContent = msg;
       }
-    } else {
-      // Flag so onAuthStateChange doesn't auto-enter app after signup
-      window._justSignedUp = true;
-
-      // Send welcome email via Brevo
-      try {
-        await fetch('/api/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, confirmationUrl: window.location.origin })
-        });
-      } catch (e) {
-        console.warn('Could not send welcome email:', e);
-      }
-
-      // Sign the user back out so they must explicitly log in
-      await db.auth.signOut();
-      showToast('Account created! Please sign in.');
-      switchAuthTab('signin');
+      window._justSignedUp = false;
+      btn.textContent = 'Verify & Create Account';
+      btn.disabled = false;
+      return;
     }
+
+    // ✅ Account created — sign them out and send to sign-in
+    await db.auth.signOut();
+    window._pendingVerifyPassword = null;
+
+    // Return to auth screen and show success
+    document.getElementById('verifyScreen').classList.add('hidden');
+    document.getElementById('authScreen').classList.remove('hidden');
+    switchAuthTab('signin');
+    document.getElementById('loginEmail').value = window._pendingVerifyEmail;
+    showToast('✅ Email verified! Your account is ready. Please sign in.');
+
   } catch (err) {
     errEl.textContent = 'Something went wrong. Please try again.';
-  } finally {
-    btn.textContent = 'Create Account';
+    btn.textContent = 'Verify & Create Account';
     btn.disabled = false;
   }
 }
 
-// ── EMAIL VERIFY SCREEN ──────────────────────────────────────
-function showVerifyScreen(email) {
-  document.getElementById('authScreen').classList.add('hidden');
-  document.getElementById('verifyScreen').classList.remove('hidden');
-  document.getElementById('verifyEmailAddr').textContent = email;
-  // Store email for resend
-  window._pendingVerifyEmail = email;
-  window._pendingVerifyPassword = document.getElementById('signupPass').value;
-}
-
-async function resendVerification() {
+// ── RESEND OTP ────────────────────────────────────────────────
+async function resendOTP() {
   const btn = document.getElementById('resendBtn');
+  const errEl = document.getElementById('otpErr');
   btn.disabled = true;
-  btn.textContent = 'Sending...';
-  const { error } = await db.auth.resend({
-    type: 'signup',
-    email: window._pendingVerifyEmail
-  });
-  if (error) {
-    showToast('Failed to resend: ' + error.message, 'danger');
-  } else {
-    showToast('Verification email resent!');
+  btn.textContent = 'Sending…';
+  errEl.textContent = '';
+
+  try {
+    const resp = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: window._pendingVerifyEmail })
+    });
+    const result = await resp.json();
+    if (resp.ok && result.success) {
+      showToast('New code sent! Check your inbox.');
+    } else {
+      errEl.textContent = result.error || 'Failed to resend. Please try again.';
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error. Please try again.';
   }
+
   setTimeout(() => {
     btn.disabled = false;
-    btn.textContent = 'Resend Email';
+    btn.textContent = 'Resend Code';
   }, 5000);
 }
 
@@ -199,6 +266,8 @@ function backToSignIn() {
   document.getElementById('verifyScreen').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
   switchAuthTab('signin');
+  window._pendingVerifyEmail    = null;
+  window._pendingVerifyPassword = null;
 }
 
 // ── AUTH: SIGN OUT ────────────────────────────────────────────

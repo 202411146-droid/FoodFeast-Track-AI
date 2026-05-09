@@ -38,7 +38,7 @@ app.post('/api/send-verification', async (req, res) => {
     await transporter.sendMail({
       from: `"${process.env.BREVO_SENDER_NAME || 'FoodFeast Track AI'}" <${process.env.BREVO_SENDER_EMAIL || process.env.BREVO_SMTP_USER}>`,
       to: email,
-      subject: 'Confirm your FoodFeast Track AI account',
+      subject: 'Welcome to FoodFeast Track AI!',
       html: `
         <!DOCTYPE html>
         <html>
@@ -51,19 +51,18 @@ app.post('/api/send-verification', async (req, res) => {
               </h1>
             </div>
             <div style="padding:40px 36px">
-              <h2 style="color:#2C1A0E;font-size:20px;margin:0 0 12px">Confirm your email</h2>
+              <h2 style="color:#2C1A0E;font-size:20px;margin:0 0 12px">Welcome aboard! 🎉</h2>
               <p style="color:#8C6A4E;font-size:15px;line-height:1.6;margin:0 0 28px">
-                Thanks for signing up! Click the button below to verify your email address and activate your account.
+                Your account has been created successfully. You can now sign in and start tracking your pantry, reducing food waste, and getting AI-powered recipe suggestions.
               </p>
               <div style="text-align:center;margin-bottom:28px">
                 <a href="${confirmationUrl}"
                    style="display:inline-block;background:#C85A2A;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700">
-                  Confirm Email Address
+                  Go to FoodFeast
                 </a>
               </div>
               <p style="color:#B89A80;font-size:12px;line-height:1.6;margin:0;text-align:center">
-                If you didn't create an account, you can safely ignore this email.<br>
-                This link expires in 24 hours.
+                If you didn't create this account, please ignore this email.
               </p>
             </div>
             <div style="background:#FAF6F0;padding:20px;text-align:center;border-top:1px solid #E2D0BB">

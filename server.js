@@ -7,7 +7,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname), {
+  index: false  // Prevent express from serving index.html directly so our route can inject ENV
+}));
 
 // ── EMAIL TRANSPORTER (Brevo SMTP) ────────────────────────────
 const transporter = nodemailer.createTransport({

@@ -1065,3 +1065,10 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   color: var(--muted);
   line-height: 1;
 }
+
+/* ===== EMAIL VERIFY SCREEN ===== */
+.verify-icon {
+  font-size: 52px;
+  margin-bottom: 16px;
+  display: block;
+}

@@ -1017,7 +1017,7 @@ Return ONLY a JSON array. Each recipe object must have:
 Start with [ and end with ]. No extra text, no markdown fences.`
             }]
           }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
         })
       }
     );

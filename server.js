@@ -135,8 +135,6 @@ app.post('/api/verify-otp', (req, res) => {
 // ── INJECT ENV & SERVE HTML ───────────────────────────────────
 // ── ANTHROPIC API PROXY ──────────────────────────────────────
 // Proxies requests to Anthropic API so the API key stays server-side
-const { createProxyMiddleware } = require('http-proxy-middleware');
-
 app.post('/api/anthropic', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY not configured on server.' } });

@@ -79,6 +79,7 @@ async function doLogin() {
 // ── AUTH: SIGN UP — Step 1: validate & send OTP ───────────────
 // Nothing is created in the database here. Only sends a code.
 async function doSignUp() {
+  const username = document.getElementById('signupUsername').value.trim();
   const email    = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPass').value;
   const confirm  = document.getElementById('signupConfirm').value;
@@ -87,6 +88,9 @@ async function doSignUp() {
   const btn      = document.getElementById('signupBtn');
 
   errEl.textContent = '';
+  if (!username)                       { errEl.textContent = 'Please enter a username.'; return; }
+  if (username.length < 3)             { errEl.textContent = 'Username must be at least 3 characters.'; return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) { errEl.textContent = 'Username can only contain letters, numbers, and underscores.'; return; }
   if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
   if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
   if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
@@ -111,6 +115,7 @@ async function doSignUp() {
     // Hold credentials in memory only — NOT in DB yet
     window._pendingVerifyEmail    = email;
     window._pendingVerifyPassword = password;
+    window._pendingVerifyUsername = username;
 
     // Show OTP screen
     document.getElementById('authScreen').classList.add('hidden');
@@ -163,7 +168,10 @@ async function confirmOTP() {
 
     const { error } = await db.auth.signUp({
       email: window._pendingVerifyEmail,
-      password: window._pendingVerifyPassword
+      password: window._pendingVerifyPassword,
+      options: {
+        data: { username: window._pendingVerifyUsername }
+      }
     });
 
     if (error) {
@@ -249,9 +257,9 @@ function enterApp() {
   document.getElementById('mainApp').classList.remove('hidden');
 
   // Populate user chip
-  const email = currentUser.email || '';
-  document.getElementById('userEmailDisplay').textContent = email;
-  document.getElementById('userAvatar').textContent = email.charAt(0).toUpperCase();
+  const username = currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || 'User';
+  document.getElementById('userEmailDisplay').textContent = username;
+  document.getElementById('userAvatar').textContent = username.charAt(0).toUpperCase();
 
   setGreeting();
   loadPantry();
@@ -266,8 +274,9 @@ function leaveApp() {
 // ── GREETING ──────────────────────────────────────────────────
 function setGreeting() {
   const h = new Date().getHours();
-  const greet = h < 12 ? 'Good morning ✦' : h < 17 ? 'Good afternoon ✦' : 'Good evening ✦';
-  document.getElementById('dashGreeting').textContent = greet;
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const username = currentUser?.user_metadata?.username || '';
+  document.getElementById('dashGreeting').textContent = username ? `${greet}, ${username} ✦` : `${greet} ✦`;
 }
 
 // ── TABS ──────────────────────────────────────────────────────

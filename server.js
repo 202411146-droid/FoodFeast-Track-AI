@@ -140,7 +140,6 @@ app.post('/api/anthropic', async (req, res) => {
     return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY not configured on server.' } });
   }
   try {
-    const https = require('https');
     const body = JSON.stringify(req.body);
     const options = {
       hostname: 'api.anthropic.com',

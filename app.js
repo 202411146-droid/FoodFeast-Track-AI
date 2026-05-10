@@ -482,7 +482,8 @@ function updateDashboard() {
 
   document.getElementById('statTotal').textContent    = pantryItems.length;
   document.getElementById('statExpiring').textContent  = expiring.length;
-  document.getElementById('statRecipes').textContent   = Math.floor(pantryItems.length / 3);
+  const readyCount = Object.values(recipeStore).filter(r => r.missingIngredients?.length === 0).length;
+  document.getElementById('statRecipes').textContent = readyCount;
   document.getElementById('statScanned').textContent   = scanCount;
 
   // Expiry list
@@ -1120,6 +1121,9 @@ Start with [ and end with ]. No extra text, no markdown fences.`
 
     renderRecipes(recipes);
     note.textContent = `${recipes.length} recipes generated from your pantry`;
+    // Update dashboard stat
+    const readyCount = recipes.filter(r => r.missingIngredients?.length === 0).length;
+    document.getElementById('statRecipes').textContent = readyCount;
   } catch (err) {
     grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your Gemini API key.</p>';
     note.textContent = '';

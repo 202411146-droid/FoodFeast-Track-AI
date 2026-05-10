@@ -9,8 +9,8 @@
 const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.supabase.co';
 const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
 
-// Replace with your Anthropic API key (or set in Railway variables)
-const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
+// Gemini API key (set GEMINI_API_KEY in Railway environment variables)
+const GEMINI_API_KEY = window.ENV?.GEMINI_API_KEY;
 
 // ── INIT ─────────────────────────────────────────────────────
 const { createClient } = supabase;
@@ -787,10 +787,10 @@ function suggestExpiry(name, category) {
   return exp.toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
-// ── AI IMAGE ANALYSIS (Claude) ────────────────────────────────
+// ── AI IMAGE ANALYSIS (Gemini) ────────────────────────────────
 async function analyzeImage(base64Data, dataUrl) {
-  if (!ANTHROPIC_API_KEY) {
-    showToast('Anthropic API key not configured. Set ANTHROPIC_API_KEY in Railway variables.', 'danger');
+  if (!GEMINI_API_KEY) {
+    showToast('Gemini API key not configured. Set GEMINI_API_KEY in Railway variables.', 'danger');
     clearImagePreview();
     return;
   }
@@ -798,44 +798,41 @@ async function analyzeImage(base64Data, dataUrl) {
   showScanProgress(true);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 800,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: 'image/jpeg', data: base64Data }
-            },
-            {
-              type: 'text',
-              text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
-            }
-          ]
-        }]
-      })
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: base64Data
+                }
+              },
+              {
+                text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
+              }
+            ]
+          }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 800 }
+        })
+      }
+    );
 
     const result = await response.json();
 
     // Check for API-level errors
     if (result.error) {
-      showToast('API error: ' + result.error.message, 'danger');
+      showToast('Gemini API error: ' + result.error.message, 'danger');
       clearImagePreview();
       return;
     }
 
-    const raw = result.content?.[0]?.text || '';
-    console.log('AI raw response:', raw);
+    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Gemini raw response:', raw);
 
     // Robust JSON extraction — find the first [ ... ] block
     let items = [];
@@ -966,10 +963,10 @@ async function addSelectedToPantry() {
 }
 
 // ── DEMO SCAN ─────────────────────────────────────────────────
-// ── RECIPE GENERATION (Claude) ────────────────────────────────
+// ── RECIPE GENERATION (Gemini) ────────────────────────────────
 async function generateRecipes() {
-  if (!ANTHROPIC_API_KEY) {
-    showToast('Anthropic API key not configured. Set ANTHROPIC_API_KEY in Railway variables.', 'danger');
+  if (!GEMINI_API_KEY) {
+    showToast('Gemini API key not configured. Set GEMINI_API_KEY in Railway variables.', 'danger');
     return;
   }
 
@@ -981,7 +978,7 @@ async function generateRecipes() {
   const grid = document.getElementById('recipeGrid');
   const note = document.getElementById('recipeNote');
   grid.innerHTML = '<p class="empty-state" style="color:var(--accent)">✦ Generating recipes…</p>';
-  note.textContent = 'Asking Claude…';
+  note.textContent = 'Asking Gemini…';
 
   // Prioritize expiring items
   const today   = new Date();
@@ -996,20 +993,15 @@ async function generateRecipes() {
   ).join(', ');
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1800,
-        messages: [{
-          role: 'user',
-          content: `You are a smart chef assistant. Given these pantry items: ${itemList}
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a smart chef assistant. Given these pantry items: ${itemList}
 
 Generate 4 recipes that use these ingredients (prioritize items expiring soon).
 Return ONLY a JSON array. Each recipe object must have:
@@ -1022,20 +1014,26 @@ Return ONLY a JSON array. Each recipe object must have:
 - "missingIngredients": string[] (extra items needed, max 3)
 - "steps": string[] (4-6 concise cooking steps)
 
-No extra text, no markdown fences.`
-        }]
-      })
-    });
+Start with [ and end with ]. No extra text, no markdown fences.`
+            }]
+          }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
+        })
+      }
+    );
 
     const result = await response.json();
-    const raw    = result.content?.[0]?.text || '[]';
-    const clean  = raw.replace(/```json|```/g, '').trim();
+    if (result.error) throw new Error(result.error.message);
+
+    const raw     = result.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const match   = raw.match(/\[[\s\S]*\]/);
+    const clean   = match ? match[0] : raw.replace(/```json|```/g, '').trim();
     const recipes = JSON.parse(clean);
 
     renderRecipes(recipes);
     note.textContent = `${recipes.length} recipes generated from your pantry`;
   } catch (err) {
-    grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your API key.</p>';
+    grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your Gemini API key.</p>';
     note.textContent = '';
     showToast('Error: ' + err.message, 'danger');
   }

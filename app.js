@@ -1019,9 +1019,6 @@ async function generateRecipes() {
     showToast('Error: ' + err.message, 'danger');
   }
 }
-    showToast('Error: ' + err.message, 'danger');
-  }
-}
 
 function renderRecipes(recipes) {
   const grid = document.getElementById('recipeGrid');

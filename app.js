@@ -27,14 +27,24 @@ let scanCount    = 0;
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await db.auth.getSession();
   if (session) {
-    currentUser = session.user;
-    enterApp();
+    // Only restore session if email is verified
+    if (session.user.email_confirmed_at) {
+      currentUser = session.user;
+      enterApp();
+    } else {
+      await db.auth.signOut();
+    }
   }
 
-  db.auth.onAuthStateChange((_event, session) => {
+  db.auth.onAuthStateChange((event, session) => {
+    // Ignore automatic SIGNED_IN right after signUp()
+    if (event === 'SIGNED_IN' && window._justSignedUp) {
+      window._justSignedUp = false;
+      return;
+    }
     currentUser = session?.user ?? null;
-    if (currentUser) enterApp();
-    else leaveApp();
+    if (currentUser && currentUser.email_confirmed_at) enterApp();
+    else if (!currentUser) leaveApp();
   });
 });
 
@@ -51,15 +61,23 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
 
-  const { error } = await db.auth.signInWithPassword({ email, password });
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
 
   btn.textContent = 'Sign In';
   btn.disabled = false;
 
-  if (error) errEl.textContent = error.message;
+  if (error) { errEl.textContent = error.message; return; }
+
+  // Block login if email not yet verified
+  const user = data?.user;
+  if (user && !user.email_confirmed_at) {
+    await db.auth.signOut();
+    errEl.textContent = 'Please verify your email before signing in.';
+  }
 }
 
-// ── AUTH: SIGN UP ─────────────────────────────────────────────
+// ── AUTH: SIGN UP — Step 1: validate & send OTP ───────────────
+// Nothing is created in the database here. Only sends a code.
 async function doSignUp() {
   const email    = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPass').value;
@@ -69,35 +87,150 @@ async function doSignUp() {
   const btn      = document.getElementById('signupBtn');
 
   errEl.textContent = '';
-
   if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
   if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
   if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
-  btn.textContent = 'Creating account…';
+  btn.textContent = 'Sending code…';
   btn.disabled = true;
 
-  const { error } = await db.auth.signUp({ email, password });
+  try {
+    const resp = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const result = await resp.json();
 
-  btn.textContent = 'Create Account';
-  btn.disabled = false;
+    if (!resp.ok || !result.success) {
+      errEl.textContent = result.error || 'Could not send verification email. Please try again.';
+      return;
+    }
 
-  if (error) {
-    // The whitelist trigger raises a postgres exception — surface it cleanly
-    errEl.textContent = error.message.includes('not authorized')
-      ? 'This email is not on the access list. Contact the admin.'
-      : error.message;
-  } else {
-    showToast('Account created! Check your email to confirm, then sign in.');
-    switchAuthTab('signin');
+    // Hold credentials in memory only — NOT in DB yet
+    window._pendingVerifyEmail    = email;
+    window._pendingVerifyPassword = password;
+
+    // Show OTP screen
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('verifyScreen').classList.remove('hidden');
+    document.getElementById('verifyEmailAddr').textContent = email;
+    document.getElementById('otpInput').value = '';
+    document.getElementById('otpErr').textContent = '';
+
+  } catch (err) {
+    errEl.textContent = 'Network error. Please check your connection.';
+  } finally {
+    btn.textContent = 'Send Verification Code';
+    btn.disabled = false;
   }
+}
+
+// ── AUTH: SIGN UP — Step 2: verify OTP then create account ────
+// db.auth.signUp() is ONLY called here, after the code is confirmed.
+// This is the first moment any record is written to the database.
+async function confirmOTP() {
+  const otp   = document.getElementById('otpInput').value.trim();
+  const errEl = document.getElementById('otpErr');
+  const btn   = document.getElementById('otpBtn');
+
+  errEl.textContent = '';
+  if (!otp || otp.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
+
+  btn.textContent = 'Verifying…';
+  btn.disabled = true;
+
+  try {
+    // Confirm OTP with server
+    const resp = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: window._pendingVerifyEmail, otp })
+    });
+    const result = await resp.json();
+
+    if (!resp.ok || !result.verified) {
+      errEl.textContent = result.error || 'Invalid code. Please try again.';
+      btn.textContent = 'Verify & Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    // OTP confirmed — NOW create the Supabase account
+    btn.textContent = 'Creating account…';
+    window._justSignedUp = true;
+
+    const { error } = await db.auth.signUp({
+      email: window._pendingVerifyEmail,
+      password: window._pendingVerifyPassword
+    });
+
+    if (error) {
+      errEl.textContent = error.message.includes('already registered')
+        ? 'An account with this email already exists. Please sign in.'
+        : error.message;
+      window._justSignedUp = false;
+      btn.textContent = 'Verify & Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    // Success — sign out and go to sign-in
+    await db.auth.signOut();
+    window._pendingVerifyPassword = null;
+
+    document.getElementById('verifyScreen').classList.add('hidden');
+    document.getElementById('authScreen').classList.remove('hidden');
+    switchAuthTab('signin');
+    document.getElementById('loginEmail').value = window._pendingVerifyEmail;
+    showToast('✅ Email verified! Account created. Please sign in.');
+
+  } catch (err) {
+    errEl.textContent = 'Something went wrong. Please try again.';
+    btn.textContent = 'Verify & Create Account';
+    btn.disabled = false;
+  }
+}
+
+// ── RESEND OTP ────────────────────────────────────────────────
+async function resendOTP() {
+  const btn   = document.getElementById('resendBtn');
+  const errEl = document.getElementById('otpErr');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  errEl.textContent = '';
+  try {
+    const resp = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: window._pendingVerifyEmail })
+    });
+    const result = await resp.json();
+    if (resp.ok && result.success) {
+      showToast('New code sent! Check your inbox.');
+    } else {
+      errEl.textContent = result.error || 'Failed to resend. Please try again.';
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error. Please try again.';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Resend Code'; }, 5000);
 }
 
 // ── AUTH: SIGN OUT ────────────────────────────────────────────
 async function doLogout() {
   stopCamera();
   await db.auth.signOut();
+}
+
+function backToSignIn() {
+  document.getElementById('verifyScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  switchAuthTab('signin');
+  window._pendingVerifyEmail    = null;
+  window._pendingVerifyPassword = null;
+}
 }
 
 // ── AUTH TAB SWITCH ───────────────────────────────────────────
@@ -533,6 +666,7 @@ async function addSelectedToPantry() {
   showToast(`✦ ${toAdd.length} item(s) added to pantry!`);
 }
 
+// ── DEMO SCAN ─────────────────────────────────────────────────
 // ── RECIPE GENERATION (Claude) ────────────────────────────────
 async function generateRecipes() {
   if (!ANTHROPIC_API_KEY) {

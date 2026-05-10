@@ -33,7 +33,6 @@
       </div>
       <p class="err-msg" id="loginErr"></p>
       <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
-      <p class="auth-hint">Demo: <strong>hishikkyle@gmail.com</strong> / <strong>demo1234</strong></p>
     </div>
     <!-- SIGN UP -->
     <div id="formSignUp" class="hidden">
@@ -162,8 +161,6 @@
           <button class="btn-scan" id="camToggleBtn" onclick="toggleCamera()">▶ Start Camera</button>
           <button class="btn-scan secondary" onclick="document.getElementById('fileInput').click()">↑ Upload Photo</button>
           <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event)" />
-          <div class="divider"><span>or</span></div>
-          <button class="btn-outline" onclick="runDemoScan()">Run Demo Scan</button>
           <div id="detectedSection" class="hidden">
             <p class="det-label">Detected Items — tap to select</p>
             <div id="foodTags"></div>

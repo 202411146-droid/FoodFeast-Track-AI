@@ -104,6 +104,22 @@
       <button class="tab-btn" onclick="switchTab('pantry',this)">Pantry</button>
       <button class="tab-btn" onclick="switchTab('recipes',this)">Recipes</button>
     </div>
+    <!-- NOTIFICATION BELL -->
+    <div class="notif-wrap" id="notifWrap">
+      <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" aria-label="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge hidden" id="notifBadge">0</span>
+      </button>
+      <div class="notif-panel hidden" id="notifPanel">
+        <div class="notif-header">
+          <span class="notif-title">Notifications</span>
+          <button class="notif-clear-all" onclick="clearAllNotifications()">Clear all</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <div class="notif-empty">No notifications yet</div>
+        </div>
+      </div>
+    </div>
     <div class="user-chip">
       <div class="avatar" id="userAvatar">K</div>
       <span id="userEmailDisplay"></span>
@@ -265,6 +281,16 @@
 </div>
 
 <div class="toast hidden" id="toast"></div>
+<script>
+// Close notification panel when clicking outside
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('notifWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const panel = document.getElementById('notifPanel');
+    if (panel) panel.classList.add('hidden');
+  }
+});
+</script>
 <script src="app.js"></script>
 </body>
 </html>

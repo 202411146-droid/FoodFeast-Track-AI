@@ -156,15 +156,17 @@
       <div class="scan-layout">
         <div class="scan-left">
           <div class="camera-box" id="cameraBox">
-            <div class="camera-frame">
-              <div class="corner tl"></div><div class="corner tr"></div>
-              <div class="corner bl"></div><div class="corner br"></div>
-              <div class="cam-icon">📷</div>
+            <div class="camera-placeholder" id="cameraPlaceholder">
+              <div class="camera-frame">
+                <div class="corner tl"></div><div class="corner tr"></div>
+                <div class="corner bl"></div><div class="corner br"></div>
+                <div class="cam-icon">📷</div>
+              </div>
+              <p class="scan-hint">Point camera at food items or upload a photo</p>
             </div>
-            <p class="scan-hint">Point camera at food items or upload a photo</p>
+            <video id="videoEl" autoplay muted playsinline style="display:none;width:100%;height:100%;object-fit:cover;border-radius:var(--radius);position:absolute;top:0;left:0;"></video>
+            <canvas id="canvasEl" style="display:none;"></canvas>
           </div>
-          <video id="videoEl" autoplay muted playsinline></video>
-          <canvas id="canvasEl"></canvas>
           <div class="scan-progress hidden" id="scanProgress">
             <p class="scan-analyzing">Analyzing with AI vision...</p>
             <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>

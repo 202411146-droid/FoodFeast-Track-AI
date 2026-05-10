@@ -1064,7 +1064,8 @@ Start with [ and end with ]. No extra text, no markdown fences.`
 }
 
 // ── FAVORITES ─────────────────────────────────────────────────
-let favoriteIds = new Set(); // stores recipe name keys of saved recipes
+let favoriteIds  = new Set(); // recipe names that are saved
+let recipeStore  = {};        // name -> recipe object, populated on generate
 
 async function loadFavorites() {
   if (!currentUser) return;
@@ -1074,32 +1075,36 @@ async function loadFavorites() {
   renderFavoritesGrid(data || []);
 }
 
-async function toggleFavorite(recipeName, recipeData, btnEl) {
+async function toggleFavorite(recipeName, btnEl) {
   if (!currentUser) return;
+
   if (favoriteIds.has(recipeName)) {
     // Remove
     const { error } = await db.from('saved_recipes').delete().eq('user_id', currentUser.id).eq('recipe_name', recipeName);
-    if (!error) {
-      favoriteIds.delete(recipeName);
-      btnEl.textContent = '🤍';
-      btnEl.title = 'Save recipe';
-      showToast('Recipe removed from saved.');
-      loadFavorites();
-    }
+    if (error) { showToast('Error removing recipe: ' + error.message, 'danger'); return; }
+    favoriteIds.delete(recipeName);
+    // Update all matching buttons
+    document.querySelectorAll('.fav-btn').forEach(b => {
+      if (b.dataset.recipe === recipeName) { b.textContent = '🤍'; b.classList.remove('saved'); }
+    });
+    showToast('Recipe removed from saved.');
+    loadFavorites();
   } else {
-    // Save
+    // Save — look up recipe from store
+    const recipeData = recipeStore[recipeName];
+    if (!recipeData) { showToast('Could not save recipe. Try again.', 'danger'); return; }
     const { error } = await db.from('saved_recipes').insert([{
       user_id: currentUser.id,
       recipe_name: recipeName,
       recipe_data: recipeData
     }]);
-    if (!error) {
-      favoriteIds.add(recipeName);
-      btnEl.textContent = '❤️';
-      btnEl.title = 'Remove from saved';
-      showToast('Recipe saved! ❤️');
-      loadFavorites();
-    }
+    if (error) { showToast('Error saving recipe: ' + error.message, 'danger'); return; }
+    favoriteIds.add(recipeName);
+    document.querySelectorAll('.fav-btn').forEach(b => {
+      if (b.dataset.recipe === recipeName) { b.textContent = '❤️'; b.classList.add('saved'); }
+    });
+    showToast('Recipe saved! ❤️');
+    loadFavorites();
   }
 }
 
@@ -1110,13 +1115,16 @@ function renderFavoritesGrid(rows) {
     return;
   }
   const recipes = rows.map(r => r.recipe_data);
-  grid.innerHTML = recipes.map((r, i) => {
+  // Store in recipeStore so unsave works
+  recipes.forEach(r => { recipeStore[r.name] = r; });
+
+  grid.innerHTML = recipes.map((r) => {
     const full = r.missingIngredients?.length === 0;
     const matchCls = full ? 'full' : 'partial';
     const matchTxt = full ? '✓ All ingredients available' : `⚠ ${r.missingIngredients?.length || 0} ingredient(s) missing`;
     const usedTags    = (r.usedIngredients || []).map(x => `<span class="rtag use">${x}</span>`).join('');
     const missingTags = (r.missingIngredients || []).map(x => `<span class="rtag missing">${x}</span>`).join('');
-    return `<div class="recipe-card" onclick="openRecipeData(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="cursor:pointer">
+    return `<div class="recipe-card" onclick="openRecipeData(${JSON.stringify(JSON.stringify(r))})" style="cursor:pointer">
       <div class="recipe-img">${r.emoji || '🍽️'}</div>
       <div class="recipe-body">
         <div class="recipe-name">${r.name}</div>
@@ -1128,7 +1136,8 @@ function renderFavoritesGrid(rows) {
         <div class="recipe-match ${matchCls}">${matchTxt}</div>
         <div class="recipe-tags">${usedTags}${missingTags}</div>
       </div>
-      <button class="fav-btn saved" title="Remove from saved" onclick="event.stopPropagation(); toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this)">❤️</button>
+      <button class="fav-btn saved" data-recipe="${r.name.replace(/"/g,'&quot;')}" title="Remove from saved"
+        onclick="event.stopPropagation(); toggleFavorite(this.dataset.recipe, this)">❤️</button>
     </div>`;
   }).join('');
 }
@@ -1139,6 +1148,9 @@ function renderRecipes(recipes) {
     grid.innerHTML = '<p class="empty-state">No recipes could be generated.</p>';
     return;
   }
+
+  // Store all recipes so toggleFavorite can find them by name
+  recipes.forEach(r => { recipeStore[r.name] = r; });
 
   grid.innerHTML = recipes.map((r, i) => {
     const full    = r.missingIngredients?.length === 0;
@@ -1163,12 +1175,17 @@ function renderRecipes(recipes) {
         <div class="recipe-match ${matchCls}">${matchTxt}</div>
         <div class="recipe-tags">${usedTags}${missingTags}</div>
       </div>
-      <button class="fav-btn ${isSaved ? 'saved' : ''}" title="${isSaved ? 'Remove from saved' : 'Save recipe'}" onclick="event.stopPropagation(); toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this)">${isSaved ? '❤️' : '🤍'}</button>
+      <button class="fav-btn ${isSaved ? 'saved' : ''}" data-recipe="${r.name.replace(/"/g,'&quot;')}"
+        title="${isSaved ? 'Remove from saved' : 'Save recipe'}"
+        onclick="event.stopPropagation(); toggleFavorite(this.dataset.recipe, this)">
+        ${isSaved ? '❤️' : '🤍'}
+      </button>
     </div>`;
   }).join('');
 }
 
-function openRecipeData(r) {
+function openRecipeData(rJson) {
+  const r = typeof rJson === 'string' ? JSON.parse(rJson) : rJson;
   _renderRecipeModal(r);
 }
 
@@ -1179,7 +1196,6 @@ function openRecipe(index) {
 }
 
 function _renderRecipeModal(r) {
-  const pantryNames = pantryItems.map(i => i.name.toLowerCase());
   const isSaved = favoriteIds.has(r.name);
 
   const ingredientRows = [
@@ -1200,8 +1216,10 @@ function _renderRecipeModal(r) {
           <span>${r.difficulty}</span>
         </div>
       </div>
-      <button class="fav-btn modal-fav ${isSaved ? 'saved' : ''}" title="${isSaved ? 'Remove from saved' : 'Save recipe'}"
-        onclick="toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this); this.textContent = favoriteIds.has('${r.name.replace(/'/g,"\\'")}') ? '❤️' : '🤍'; this.classList.toggle('saved');">
+      <button class="fav-btn modal-fav ${isSaved ? 'saved' : ''}"
+        data-recipe="${r.name.replace(/"/g,'&quot;')}"
+        title="${isSaved ? 'Remove from saved' : 'Save recipe'}"
+        onclick="toggleFavorite(this.dataset.recipe, this)">
         ${isSaved ? '❤️' : '🤍'}
       </button>
     </div>

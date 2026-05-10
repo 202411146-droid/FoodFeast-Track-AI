@@ -262,6 +262,7 @@ function enterApp() {
   document.getElementById('userAvatar').textContent = username.charAt(0).toUpperCase();
 
   setGreeting();
+  recipeStore = {};
   loadPantry();
   loadFavorites();
 }
@@ -482,7 +483,7 @@ function updateDashboard() {
 
   document.getElementById('statTotal').textContent    = pantryItems.length;
   document.getElementById('statExpiring').textContent  = expiring.length;
-  const readyCount = Object.values(recipeStore).filter(r => r.missingIngredients?.length === 0).length;
+  const readyCount = 0;
   document.getElementById('statRecipes').textContent = readyCount;
   document.getElementById('statScanned').textContent   = scanCount;
 

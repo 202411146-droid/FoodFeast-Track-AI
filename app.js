@@ -822,7 +822,7 @@ async function analyzeImage(base64Data, dataUrl) {
                 }
               },
               {
-                text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
+                text: 'Look at this image and list every food item you can see. Return a JSON array. Each object must have: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji","expiry_days":number,"calories_per_100g":number}. expiry_days = realistic days until expiry (banana=5, milk=7, raw chicken=2, cooked rice=4, canned goods=730, eggs=21). calories_per_100g = approximate calories (banana=89, whole milk=61, chicken breast=165, white rice=130, egg=155, bread=265, apple=52, carrot=41, cheddar=402). Return 1-10 items. Start with [ end with ]. No other text.'
               }
             ]
           }],
@@ -861,12 +861,25 @@ async function analyzeImage(base64Data, dataUrl) {
     }
 
     // Sanitize items — ensure they have required fields
-    items = items.filter(item => item && item.name).map(item => ({
-      name: item.name || 'Unknown item',
-      category: ['produce','dairy','protein','grain','other'].includes(item.category) ? item.category : 'other',
-      emoji: item.emoji || '🥫',
-      expiry_date: suggestExpiry(item.name, item.category || 'other')
-    }));
+    items = items.filter(item => item && item.name).map(item => {
+      const category = ['produce','dairy','protein','grain','other'].includes(item.category) ? item.category : 'other';
+      // Use AI-provided expiry_days, fallback to suggestExpiry
+      let expiry_date = null;
+      if (item.expiry_days && typeof item.expiry_days === 'number' && item.expiry_days > 0) {
+        const exp = new Date();
+        exp.setDate(exp.getDate() + Math.round(item.expiry_days));
+        expiry_date = exp.toISOString().split('T')[0];
+      } else {
+        expiry_date = suggestExpiry(item.name, category);
+      }
+      return {
+        name: item.name || 'Unknown item',
+        category,
+        emoji: item.emoji || '🥫',
+        expiry_date,
+        calories_per_100g: (item.calories_per_100g && typeof item.calories_per_100g === 'number') ? Math.round(item.calories_per_100g) : null
+      };
+    });
 
     if (!items.length) {
       showToast('No food items detected. Try a clearer or closer photo.', 'danger');
@@ -926,6 +939,7 @@ function showDetectedItems(items) {
       <span class="tag-emoji">${item.emoji}</span>
       <span class="tag-name">${item.name}</span>
       ${expStr ? `<span class="tag-expiry ${urgency}">exp ${expStr}</span>` : ''}
+      ${item.calories_per_100g ? `<span class="tag-calories">${item.calories_per_100g} kcal/100g</span>` : ''}
     </div>`;
   }).join('');
 

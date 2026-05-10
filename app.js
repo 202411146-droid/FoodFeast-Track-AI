@@ -627,8 +627,10 @@ async function toggleCamera() {
     scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     const video = document.getElementById('videoEl');
     video.srcObject = scanStream;
-    video.classList.remove('hidden');
-    document.getElementById('cameraBox').classList.add('hidden');
+    video.style.display = 'block';
+    // Hide only the placeholder content, keep the camera-box visible
+    const placeholder = document.getElementById('cameraPlaceholder');
+    if (placeholder) placeholder.style.display = 'none';
     btn.textContent = '⏹ Stop Camera';
 
     // Add capture button dynamically if not present
@@ -642,7 +644,12 @@ async function toggleCamera() {
       document.querySelector('.scan-controls').insertBefore(capBtn, document.getElementById('camToggleBtn').nextSibling);
     }
   } catch (err) {
-    showToast('Camera access denied: ' + err.message, 'danger');
+    let msg = 'Camera access denied.';
+    if (err.name === 'NotAllowedError')  msg = 'Camera permission denied. Please allow camera access in your browser settings and reload.';
+    if (err.name === 'NotFoundError')    msg = 'No camera found on this device.';
+    if (err.name === 'NotReadableError') msg = 'Camera is in use by another app. Please close it and try again.';
+    if (err.name === 'OverconstrainedError') msg = 'Camera not available. Try Upload Photo instead.';
+    showToast(msg, 'danger');
   }
 }
 
@@ -652,9 +659,11 @@ function stopCamera() {
     scanStream = null;
   }
   const video = document.getElementById('videoEl');
-  video.classList.add('hidden');
+  video.style.display = 'none';
   video.srcObject = null;
-  document.getElementById('cameraBox').classList.remove('hidden');
+  // Restore placeholder
+  const placeholder = document.getElementById('cameraPlaceholder');
+  if (placeholder) placeholder.style.display = '';
   const btn = document.getElementById('camToggleBtn');
   if (btn) btn.textContent = '▶ Start Camera';
   document.getElementById('captureBtn')?.remove();
@@ -663,11 +672,20 @@ function stopCamera() {
 function captureFrame() {
   const video  = document.getElementById('videoEl');
   const canvas = document.getElementById('canvasEl');
-  canvas.width  = video.videoWidth;
-  canvas.height = video.videoHeight;
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
   canvas.getContext('2d').drawImage(video, 0, 0);
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  stopCamera();
+  // Stop camera stream but show the captured frame as preview
+  if (scanStream) {
+    scanStream.getTracks().forEach(t => t.stop());
+    scanStream = null;
+  }
+  video.style.display = 'none';
+  const placeholder = document.getElementById('cameraPlaceholder');
+  if (placeholder) placeholder.style.display = 'none';
+  document.getElementById('captureBtn')?.remove();
+  document.getElementById('camToggleBtn').textContent = '▶ Start Camera';
   showImagePreview(dataUrl);
   analyzeImage(dataUrl.split(',')[1], dataUrl);
 }

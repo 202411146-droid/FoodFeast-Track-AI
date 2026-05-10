@@ -263,6 +263,7 @@ function enterApp() {
 
   setGreeting();
   loadPantry();
+  loadFavorites();
 }
 
 function leaveApp() {
@@ -1062,6 +1063,76 @@ Start with [ and end with ]. No extra text, no markdown fences.`
   }
 }
 
+// ── FAVORITES ─────────────────────────────────────────────────
+let favoriteIds = new Set(); // stores recipe name keys of saved recipes
+
+async function loadFavorites() {
+  if (!currentUser) return;
+  const { data, error } = await db.from('saved_recipes').select('*').eq('user_id', currentUser.id);
+  if (error) { console.error('loadFavorites error:', error); return; }
+  favoriteIds = new Set((data || []).map(r => r.recipe_name));
+  renderFavoritesGrid(data || []);
+}
+
+async function toggleFavorite(recipeName, recipeData, btnEl) {
+  if (!currentUser) return;
+  if (favoriteIds.has(recipeName)) {
+    // Remove
+    const { error } = await db.from('saved_recipes').delete().eq('user_id', currentUser.id).eq('recipe_name', recipeName);
+    if (!error) {
+      favoriteIds.delete(recipeName);
+      btnEl.textContent = '🤍';
+      btnEl.title = 'Save recipe';
+      showToast('Recipe removed from saved.');
+      loadFavorites();
+    }
+  } else {
+    // Save
+    const { error } = await db.from('saved_recipes').insert([{
+      user_id: currentUser.id,
+      recipe_name: recipeName,
+      recipe_data: recipeData
+    }]);
+    if (!error) {
+      favoriteIds.add(recipeName);
+      btnEl.textContent = '❤️';
+      btnEl.title = 'Remove from saved';
+      showToast('Recipe saved! ❤️');
+      loadFavorites();
+    }
+  }
+}
+
+function renderFavoritesGrid(rows) {
+  const grid = document.getElementById('favoritesGrid');
+  if (!rows.length) {
+    grid.innerHTML = '<p class="empty-state">No saved recipes yet. Hit ❤ on any recipe to save it!</p>';
+    return;
+  }
+  const recipes = rows.map(r => r.recipe_data);
+  grid.innerHTML = recipes.map((r, i) => {
+    const full = r.missingIngredients?.length === 0;
+    const matchCls = full ? 'full' : 'partial';
+    const matchTxt = full ? '✓ All ingredients available' : `⚠ ${r.missingIngredients?.length || 0} ingredient(s) missing`;
+    const usedTags    = (r.usedIngredients || []).map(x => `<span class="rtag use">${x}</span>`).join('');
+    const missingTags = (r.missingIngredients || []).map(x => `<span class="rtag missing">${x}</span>`).join('');
+    return `<div class="recipe-card" onclick="openRecipeData(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="cursor:pointer">
+      <div class="recipe-img">${r.emoji || '🍽️'}</div>
+      <div class="recipe-body">
+        <div class="recipe-name">${r.name}</div>
+        <div class="recipe-meta">
+          <span>⏱ ${r.time}</span>
+          <span>👤 ${r.servings} servings</span>
+          <span>${r.difficulty}</span>
+        </div>
+        <div class="recipe-match ${matchCls}">${matchTxt}</div>
+        <div class="recipe-tags">${usedTags}${missingTags}</div>
+      </div>
+      <button class="fav-btn saved" title="Remove from saved" onclick="event.stopPropagation(); toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this)">❤️</button>
+    </div>`;
+  }).join('');
+}
+
 function renderRecipes(recipes) {
   const grid = document.getElementById('recipeGrid');
   if (!recipes.length) {
@@ -1078,6 +1149,7 @@ function renderRecipes(recipes) {
 
     const usedTags    = (r.usedIngredients || []).map(x => `<span class="rtag use">${x}</span>`).join('');
     const missingTags = (r.missingIngredients || []).map(x => `<span class="rtag missing">${x}</span>`).join('');
+    const isSaved = favoriteIds.has(r.name);
 
     return `<div class="recipe-card" onclick="openRecipe(${i})" data-index="${i}" data-recipe='${JSON.stringify(r).replace(/'/g, '&#39;')}'>
       <div class="recipe-img">${r.emoji || '🍽️'}</div>
@@ -1091,14 +1163,24 @@ function renderRecipes(recipes) {
         <div class="recipe-match ${matchCls}">${matchTxt}</div>
         <div class="recipe-tags">${usedTags}${missingTags}</div>
       </div>
+      <button class="fav-btn ${isSaved ? 'saved' : ''}" title="${isSaved ? 'Remove from saved' : 'Save recipe'}" onclick="event.stopPropagation(); toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this)">${isSaved ? '❤️' : '🤍'}</button>
     </div>`;
   }).join('');
 }
 
+function openRecipeData(r) {
+  _renderRecipeModal(r);
+}
+
 function openRecipe(index) {
-  const card   = document.querySelector(`.recipe-card[data-index="${index}"]`);
-  const r      = JSON.parse(card.dataset.recipe);
+  const card = document.querySelector(`.recipe-card[data-index="${index}"]`);
+  const r    = JSON.parse(card.dataset.recipe);
+  _renderRecipeModal(r);
+}
+
+function _renderRecipeModal(r) {
   const pantryNames = pantryItems.map(i => i.name.toLowerCase());
+  const isSaved = favoriteIds.has(r.name);
 
   const ingredientRows = [
     ...(r.usedIngredients || []).map(x => `<li class="have">✓ ${x}</li>`),
@@ -1118,6 +1200,10 @@ function openRecipe(index) {
           <span>${r.difficulty}</span>
         </div>
       </div>
+      <button class="fav-btn modal-fav ${isSaved ? 'saved' : ''}" title="${isSaved ? 'Remove from saved' : 'Save recipe'}"
+        onclick="toggleFavorite('${r.name.replace(/'/g,"\\'")}', ${JSON.stringify(r).replace(/"/g,'&quot;')}, this); this.textContent = favoriteIds.has('${r.name.replace(/'/g,"\\'")}') ? '❤️' : '🤍'; this.classList.toggle('saved');">
+        ${isSaved ? '❤️' : '🤍'}
+      </button>
     </div>
     <div class="recipe-section">
       <h3>Ingredients</h3>

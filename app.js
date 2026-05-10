@@ -300,6 +300,142 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
 });
 
 // ── TOAST ─────────────────────────────────────────────────────
+
+/* ===================================================
+   NOTIFICATION SYSTEM
+   =================================================== */
+
+let notifications = [];
+let notifIdCounter = 0;
+
+function toggleNotifPanel() {
+  const panel  = document.getElementById('notifPanel');
+  const btn    = document.getElementById('notifBtn');
+  const hidden = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !hidden);
+  btn.classList.toggle('active', hidden);
+  if (hidden) markAllRead();
+}
+
+function markAllRead() {
+  notifications.forEach(n => n.unread = false);
+  renderNotifList();
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const unread = notifications.filter(n => n.unread).length;
+  const badge  = document.getElementById('notifBadge');
+  if (!badge) return;
+  if (unread > 0) {
+    badge.textContent = unread > 9 ? '9+' : unread;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderNotifList() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  if (notifications.length === 0) {
+    list.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.unread ? 'unread' : ''}" id="notif-${n.id}">
+      <div class="notif-icon ${n.type}">${n.emoji}</div>
+      <div class="notif-body">
+        <div class="notif-msg">${n.message}</div>
+        <div class="notif-time">${n.time}</div>
+      </div>
+      ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
+      <button class="notif-dismiss" onclick="dismissNotification(${n.id})" title="Dismiss">✕</button>
+    </div>
+  `).join('');
+}
+
+function addNotification(message, type = 'info', emoji = '🔔') {
+  const id = ++notifIdCounter;
+  notifications.unshift({
+    id, message, type, emoji,
+    unread: true,
+    time: formatNotifTime(new Date()),
+  });
+  // Keep max 20 notifications
+  if (notifications.length > 20) notifications.pop();
+  renderNotifList();
+  updateNotifBadge();
+}
+
+function dismissNotification(id) {
+  notifications = notifications.filter(n => n.id !== id);
+  renderNotifList();
+  updateNotifBadge();
+}
+
+function clearAllNotifications() {
+  notifications = [];
+  renderNotifList();
+  updateNotifBadge();
+}
+
+function formatNotifTime(date) {
+  const now  = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60)  return 'Just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/* ── Auto-scan pantry on load & fire relevant notifications ── */
+function checkExpiryNotifications(items) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const expired   = [];
+  const critical  = []; // ≤ 1 day
+  const soon      = []; // 2-7 days
+
+  items.forEach(item => {
+    if (!item.expiry_date) return;
+    const exp = new Date(item.expiry_date);
+    exp.setHours(0,0,0,0);
+    const days = Math.round((exp - today) / 86400000);
+    if (days < 0)       expired.push({ ...item, days });
+    else if (days <= 1) critical.push({ ...item, days });
+    else if (days <= 7) soon.push({ ...item, days });
+  });
+
+  // Fire notifications (oldest first so most critical appears on top)
+  if (expired.length) {
+    addNotification(
+      `<strong>${expired.length} item${expired.length > 1 ? 's' : ''}</strong> in your pantry ${expired.length > 1 ? 'have' : 'has'} expired — consider removing them.`,
+      'danger', '🗑️'
+    );
+  }
+  if (critical.length) {
+    const names = critical.slice(0, 2).map(i => `<strong>${i.name}</strong>`).join(', ');
+    const extra = critical.length > 2 ? ` +${critical.length - 2} more` : '';
+    addNotification(
+      `${names}${extra} expire${critical.length === 1 ? 's' : ''} today or tomorrow — use it soon!`,
+      'danger', '⚠️'
+    );
+  }
+  if (soon.length) {
+    const names = soon.slice(0, 2).map(i => `<strong>${i.name}</strong>`).join(', ');
+    const extra = soon.length > 2 ? ` +${soon.length - 2} more` : '';
+    addNotification(
+      `${names}${extra} expir${soon.length === 1 ? 'es' : 'e'} within 7 days.`,
+      'warn', '🕐'
+    );
+  }
+  if (items.length > 0 && expired.length === 0 && critical.length === 0 && soon.length === 0) {
+    addNotification('All pantry items are fresh — great job! 🥬', 'success', '✅');
+  }
+}
+
 let toastTimer;
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
@@ -340,6 +476,7 @@ function updateDashboard() {
   document.getElementById('statScanned').textContent   = scanCount;
 
   // Expiry list
+  checkExpiryNotifications(pantryItems);
   const expiryEl = document.getElementById('expiryList');
   if (expiring.length === 0) {
     expiryEl.innerHTML = '<p class="empty-state">No items expiring soon 🎉</p>';
@@ -461,6 +598,7 @@ async function saveItem() {
   updateDashboard();
   closeModal('addItemModal');
   showToast(`${emoji} ${name} added to pantry!`);
+  addNotification(`${emoji} <strong>${name}</strong> was added to your pantry.`, 'success', emoji);
 }
 
 // ── DELETE ITEM ───────────────────────────────────────────────
@@ -472,6 +610,7 @@ async function deleteItem(id) {
   renderPantryGrid(pantryItems);
   updateDashboard();
   showToast('Item removed.');
+  addNotification('A pantry item was removed.', 'info', '🗑️');
 }
 
 // ── EMOJI HELPER ──────────────────────────────────────────────
@@ -663,6 +802,7 @@ async function addSelectedToPantry() {
   updateDashboard();
   document.getElementById('detectedSection').classList.add('hidden');
   showToast(`✦ ${toAdd.length} item(s) added to pantry!`);
+  addNotification(`✦ <strong>${toAdd.length} scanned item${toAdd.length > 1 ? 's' : ''}</strong> added to your pantry via AI scan.`, 'info', '📷');
 }
 
 // ── DEMO SCAN ─────────────────────────────────────────────────

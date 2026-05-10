@@ -6,8 +6,14 @@
 // ── CONFIGURATION ────────────────────────────────────────────
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.supabase.co';
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
+// Keys must be set as Railway environment variables - no hardcoded fallbacks to avoid mismatch
+const SUPABASE_URL = window.ENV?.SUPABASE_URL;
+const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;text-align:center"><h2>Configuration Error</h2><p>SUPABASE_URL and SUPABASE_ANON_KEY environment variables are not set in Railway.</p></div>';
+  throw new Error('Missing Supabase environment variables');
+}
 
 // Replace with your Anthropic API key (or set in Railway variables)
 const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
@@ -25,26 +31,37 @@ let scanCount    = 0;
 
 // ── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    // Only restore session if email is verified
-    if (session.user.email_confirmed_at) {
-      currentUser = session.user;
-      enterApp();
-    } else {
-      await db.auth.signOut();
+  // Handle email confirmation redirect from Supabase
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (accessToken) {
+      const { error } = await db.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (!error) {
+        window.history.replaceState(null, '', window.location.pathname);
+        showToast('Email confirmed! Welcome to FoodFeast!');
+      }
     }
   }
 
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    enterApp();
+  }
+
   db.auth.onAuthStateChange((event, session) => {
-    // Ignore automatic SIGNED_IN right after signUp()
+    // Ignore the automatic SIGNED_IN that fires right after signUp()
+    // We only want to enter the app on explicit sign-in, not registration
     if (event === 'SIGNED_IN' && window._justSignedUp) {
       window._justSignedUp = false;
       return;
     }
     currentUser = session?.user ?? null;
-    if (currentUser && currentUser.email_confirmed_at) enterApp();
-    else if (!currentUser) leaveApp();
+    if (currentUser) enterApp();
+    else leaveApp();
   });
 });
 
@@ -61,23 +78,15 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
 
-  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  const { error } = await db.auth.signInWithPassword({ email, password });
 
   btn.textContent = 'Sign In';
   btn.disabled = false;
 
-  if (error) { errEl.textContent = error.message; return; }
-
-  // Block login if email not yet verified
-  const user = data?.user;
-  if (user && !user.email_confirmed_at) {
-    await db.auth.signOut();
-    errEl.textContent = 'Please verify your email before signing in.';
-  }
+  if (error) errEl.textContent = error.message;
 }
 
-// ── AUTH: SIGN UP — Step 1: validate & send OTP ───────────────
-// Nothing is created in the database here. Only sends a code.
+// ── AUTH: SIGN UP ─────────────────────────────────────────────
 async function doSignUp() {
   const email    = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPass').value;
@@ -87,149 +96,92 @@ async function doSignUp() {
   const btn      = document.getElementById('signupBtn');
 
   errEl.textContent = '';
+
   if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
   if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
   if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
-  btn.textContent = 'Sending code…';
+  btn.textContent = 'Creating account...';
   btn.disabled = true;
 
   try {
-    const resp = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    const result = await resp.json();
-
-    if (!resp.ok || !result.success) {
-      errEl.textContent = result.error || 'Could not send verification email. Please try again.';
-      return;
-    }
-
-    // Hold credentials in memory only — NOT in DB yet
-    window._pendingVerifyEmail    = email;
-    window._pendingVerifyPassword = password;
-
-    // Show OTP screen
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('verifyScreen').classList.remove('hidden');
-    document.getElementById('verifyEmailAddr').textContent = email;
-    document.getElementById('otpInput').value = '';
-    document.getElementById('otpErr').textContent = '';
-
-  } catch (err) {
-    errEl.textContent = 'Network error. Please check your connection.';
-  } finally {
-    btn.textContent = 'Send Verification Code';
-    btn.disabled = false;
-  }
-}
-
-// ── AUTH: SIGN UP — Step 2: verify OTP then create account ────
-// db.auth.signUp() is ONLY called here, after the code is confirmed.
-// This is the first moment any record is written to the database.
-async function confirmOTP() {
-  const otp   = document.getElementById('otpInput').value.trim();
-  const errEl = document.getElementById('otpErr');
-  const btn   = document.getElementById('otpBtn');
-
-  errEl.textContent = '';
-  if (!otp || otp.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
-
-  btn.textContent = 'Verifying…';
-  btn.disabled = true;
-
-  try {
-    // Confirm OTP with server
-    const resp = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: window._pendingVerifyEmail, otp })
-    });
-    const result = await resp.json();
-
-    if (!resp.ok || !result.verified) {
-      errEl.textContent = result.error || 'Invalid code. Please try again.';
-      btn.textContent = 'Verify & Create Account';
-      btn.disabled = false;
-      return;
-    }
-
-    // OTP confirmed — NOW create the Supabase account
-    btn.textContent = 'Creating account…';
-    window._justSignedUp = true;
-
-    const { error } = await db.auth.signUp({
-      email: window._pendingVerifyEmail,
-      password: window._pendingVerifyPassword
-    });
+    const { data, error } = await db.auth.signUp({ email, password });
 
     if (error) {
-      errEl.textContent = error.message.includes('already registered')
-        ? 'An account with this email already exists. Please sign in.'
-        : error.message;
-      window._justSignedUp = false;
-      btn.textContent = 'Verify & Create Account';
-      btn.disabled = false;
-      return;
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
+        errEl.textContent = 'An account with this email already exists. Try signing in instead.';
+      } else {
+        errEl.textContent = msg;
+      }
+    } else {
+      // Flag so onAuthStateChange doesn't auto-enter app after signup
+      window._justSignedUp = true;
+
+      // Send welcome email via Brevo
+      try {
+        await fetch('/api/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, confirmationUrl: window.location.origin })
+        });
+      } catch (e) {
+        console.warn('Could not send welcome email:', e);
+      }
+
+      // Sign the user back out so they must explicitly log in
+      await db.auth.signOut();
+      showToast('Account created! Please sign in.');
+      switchAuthTab('signin');
     }
-
-    // Success — sign out and go to sign-in
-    await db.auth.signOut();
-    window._pendingVerifyPassword = null;
-
-    document.getElementById('verifyScreen').classList.add('hidden');
-    document.getElementById('authScreen').classList.remove('hidden');
-    switchAuthTab('signin');
-    document.getElementById('loginEmail').value = window._pendingVerifyEmail;
-    showToast('✅ Email verified! Account created. Please sign in.');
-
   } catch (err) {
     errEl.textContent = 'Something went wrong. Please try again.';
-    btn.textContent = 'Verify & Create Account';
+  } finally {
+    btn.textContent = 'Create Account';
     btn.disabled = false;
   }
 }
 
-// ── RESEND OTP ────────────────────────────────────────────────
-async function resendOTP() {
-  const btn   = document.getElementById('resendBtn');
-  const errEl = document.getElementById('otpErr');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-  errEl.textContent = '';
-  try {
-    const resp = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: window._pendingVerifyEmail })
-    });
-    const result = await resp.json();
-    if (resp.ok && result.success) {
-      showToast('New code sent! Check your inbox.');
-    } else {
-      errEl.textContent = result.error || 'Failed to resend. Please try again.';
-    }
-  } catch (e) {
-    errEl.textContent = 'Network error. Please try again.';
-  }
-  setTimeout(() => { btn.disabled = false; btn.textContent = 'Resend Code'; }, 5000);
+// ── EMAIL VERIFY SCREEN ──────────────────────────────────────
+function showVerifyScreen(email) {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('verifyScreen').classList.remove('hidden');
+  document.getElementById('verifyEmailAddr').textContent = email;
+  // Store email for resend
+  window._pendingVerifyEmail = email;
+  window._pendingVerifyPassword = document.getElementById('signupPass').value;
 }
 
-// ── AUTH: SIGN OUT ────────────────────────────────────────────
-async function doLogout() {
-  stopCamera();
-  await db.auth.signOut();
+async function resendVerification() {
+  const btn = document.getElementById('resendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  const { error } = await db.auth.resend({
+    type: 'signup',
+    email: window._pendingVerifyEmail
+  });
+  if (error) {
+    showToast('Failed to resend: ' + error.message, 'danger');
+  } else {
+    showToast('Verification email resent!');
+  }
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Resend Email';
+  }, 5000);
 }
 
 function backToSignIn() {
   document.getElementById('verifyScreen').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
   switchAuthTab('signin');
-  window._pendingVerifyEmail    = null;
-  window._pendingVerifyPassword = null;
+}
+
+// ── AUTH: SIGN OUT ────────────────────────────────────────────
+async function doLogout() {
+  stopCamera();
+  await db.auth.signOut();
 }
 
 // ── AUTH TAB SWITCH ───────────────────────────────────────────
@@ -241,6 +193,11 @@ function switchAuthTab(tab) {
   document.getElementById('tabSignUp').classList.toggle('active', !isSignIn);
   document.getElementById('loginErr').textContent   = '';
   document.getElementById('signupErr').textContent  = '';
+  // Always re-enable buttons when switching tabs (prevents stuck disabled state)
+  const loginBtn  = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  if (loginBtn)  { loginBtn.disabled  = false; loginBtn.textContent  = 'Sign In'; }
+  if (signupBtn) { signupBtn.disabled = false; signupBtn.textContent = 'Create Account'; }
 }
 
 // ── APP ENTER / LEAVE ─────────────────────────────────────────
@@ -339,6 +296,12 @@ function updateDashboard() {
   document.getElementById('statRecipes').textContent   = Math.floor(pantryItems.length / 3);
   document.getElementById('statScanned').textContent   = scanCount;
 
+  // Update notification bell
+  updateNotifBell(expiring);
+
+  // Request push permission and fire browser notification on first load
+  checkPushNotifications(expiring);
+
   // Expiry list
   const expiryEl = document.getElementById('expiryList');
   if (expiring.length === 0) {
@@ -377,6 +340,90 @@ function formatDate(ts) {
   if (diff < 60)  return diff + 'm ago';
   if (diff < 1440) return Math.floor(diff / 60) + 'h ago';
   return d.toLocaleDateString();
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+let _pushNotifSentThisSession = false;
+
+function updateNotifBell(expiringItems) {
+  const badge = document.getElementById('notifBadge');
+  const list  = document.getElementById('notifList');
+  const count = expiringItems.length;
+
+  // Badge
+  if (count > 0) {
+    badge.textContent = count > 9 ? '9+' : count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+
+  // Panel list
+  if (count === 0) {
+    list.innerHTML = '<p class="empty-state" style="padding:16px">No items expiring soon 🎉</p>';
+    return;
+  }
+
+  const today = new Date();
+  list.innerHTML = expiringItems.map(i => {
+    const d    = new Date(i.expiry_date);
+    const days = Math.ceil((d - today) / 86400000);
+    const cls  = days <= 2 ? 'red' : days <= 4 ? 'yellow' : 'green';
+    const label = days === 0 ? 'Expires today!' : days === 1 ? 'Expires tomorrow' : `Expires in ${days} days`;
+    return `
+      <div class="notif-item">
+        <div>
+          <div class="notif-item-name">${i.emoji || '🥫'} ${i.name}</div>
+          <div class="notif-item-sub">${label}</div>
+        </div>
+        <span class="exp-badge ${cls}">${days === 0 ? 'Today' : days + 'd'}</span>
+      </div>`;
+  }).join('');
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  panel.classList.toggle('hidden');
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('notifWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('notifPanel')?.classList.add('hidden');
+  }
+});
+
+async function checkPushNotifications(expiringItems) {
+  // Only fire once per session so it doesn't spam on every pantry reload
+  if (_pushNotifSentThisSession) return;
+  if (!('Notification' in window)) return;
+  if (expiringItems.length === 0) return;
+
+  // Ask permission if not yet granted
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+
+  if (Notification.permission !== 'granted') return;
+
+  _pushNotifSentThisSession = true;
+
+  const today = new Date();
+  const urgent = expiringItems.filter(i => {
+    const days = Math.ceil((new Date(i.expiry_date) - today) / 86400000);
+    return days <= 3;
+  });
+
+  if (urgent.length === 0) return;
+
+  const names = urgent.slice(0, 3).map(i => `${i.emoji || '🥫'} ${i.name}`).join(', ');
+  const more  = urgent.length > 3 ? ` and ${urgent.length - 3} more` : '';
+
+  new Notification('FoodFeast — Items Expiring Soon 🔔', {
+    body: `${names}${more} will expire within 3 days.`,
+    icon: 'https://cdn.jsdelivr.net/npm/twemoji@14/assets/72x72/1f957.png'
+  });
 }
 
 // ── PANTRY RENDER ─────────────────────────────────────────────
@@ -666,6 +713,18 @@ async function addSelectedToPantry() {
 }
 
 // ── DEMO SCAN ─────────────────────────────────────────────────
+function runDemoScan() {
+  const demoItems = [
+    { name: 'Spinach',   category: 'produce', emoji: '🥬' },
+    { name: 'Eggs',      category: 'protein', emoji: '🥚' },
+    { name: 'Cheddar',   category: 'dairy',   emoji: '🧀' },
+    { name: 'Tomatoes',  category: 'produce', emoji: '🍅' },
+    { name: 'Bread',     category: 'grain',   emoji: '🍞' }
+  ];
+  showDetectedItems(demoItems);
+  showToast('Demo scan complete — select items to add!');
+}
+
 // ── RECIPE GENERATION (Claude) ────────────────────────────────
 async function generateRecipes() {
   if (!ANTHROPIC_API_KEY) {

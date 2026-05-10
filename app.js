@@ -713,18 +713,6 @@ async function addSelectedToPantry() {
 }
 
 // ── DEMO SCAN ─────────────────────────────────────────────────
-function runDemoScan() {
-  const demoItems = [
-    { name: 'Spinach',   category: 'produce', emoji: '🥬' },
-    { name: 'Eggs',      category: 'protein', emoji: '🥚' },
-    { name: 'Cheddar',   category: 'dairy',   emoji: '🧀' },
-    { name: 'Tomatoes',  category: 'produce', emoji: '🍅' },
-    { name: 'Bread',     category: 'grain',   emoji: '🍞' }
-  ];
-  showDetectedItems(demoItems);
-  showToast('Demo scan complete — select items to add!');
-}
-
 // ── RECIPE GENERATION (Claude) ────────────────────────────────
 async function generateRecipes() {
   if (!ANTHROPIC_API_KEY) {

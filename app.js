@@ -231,7 +231,6 @@ function backToSignIn() {
   window._pendingVerifyEmail    = null;
   window._pendingVerifyPassword = null;
 }
-}
 
 // ── AUTH TAB SWITCH ───────────────────────────────────────────
 function switchAuthTab(tab) {

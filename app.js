@@ -264,6 +264,7 @@ function enterApp() {
   setGreeting();
   loadPantry();
   loadFavorites();
+  loadDefaultRecipes();
 }
 
 function leaveApp() {
@@ -988,6 +989,70 @@ async function addSelectedToPantry() {
 
 // ── DEMO SCAN ─────────────────────────────────────────────────
 // ── RECIPE GENERATION (Gemini) ────────────────────────────────
+// ── DEFAULT RECIPES ───────────────────────────────────────────
+function loadDefaultRecipes() {
+  const defaults = [
+    {
+      name: "Garlic Fried Rice",
+      emoji: "🍳",
+      time: "15 min",
+      difficulty: "Easy",
+      servings: 2,
+      usedIngredients: ["Rice", "Garlic", "Egg"],
+      missingIngredients: ["Soy sauce"],
+      steps: [
+        "Cook rice ahead and let it cool (day-old rice works best).",
+        "Heat oil in a pan over medium-high heat and sauté minced garlic until golden.",
+        "Push garlic to the side, crack in eggs and scramble lightly.",
+        "Add rice and mix everything together, breaking up clumps.",
+        "Season with soy sauce and salt. Stir-fry for 3–4 minutes until heated through.",
+        "Serve hot, topped with a fried egg if desired."
+      ]
+    },
+    {
+      name: "Vegetable Omelette",
+      emoji: "🥚",
+      time: "10 min",
+      difficulty: "Easy",
+      servings: 1,
+      usedIngredients: ["Eggs", "Onion", "Tomato"],
+      missingIngredients: [],
+      steps: [
+        "Beat 2–3 eggs with a pinch of salt and pepper.",
+        "Dice onion and tomato into small pieces.",
+        "Heat butter or oil in a non-stick pan over medium heat.",
+        "Sauté onion for 1–2 minutes, then add tomato and cook briefly.",
+        "Pour egg mixture over the vegetables and let it set on the edges.",
+        "Fold the omelette in half and slide onto a plate."
+      ]
+    },
+    {
+      name: "Creamy Pasta",
+      emoji: "🍝",
+      time: "25 min",
+      difficulty: "Medium",
+      servings: 2,
+      usedIngredients: ["Pasta", "Garlic", "Onion"],
+      missingIngredients: ["Cream", "Parmesan"],
+      steps: [
+        "Boil pasta in salted water until al dente, reserve ½ cup pasta water.",
+        "Sauté diced onion and garlic in butter until soft and fragrant.",
+        "Add cream and let it simmer for 3–4 minutes until slightly thickened.",
+        "Toss in drained pasta and mix well, adding pasta water to loosen if needed.",
+        "Season with salt, pepper, and grated Parmesan.",
+        "Serve immediately with extra cheese on top."
+      ]
+    }
+  ];
+
+  // Store in recipeStore and render
+  defaults.forEach(r => { recipeStore[r.name] = r; });
+  const grid = document.getElementById('recipeGrid');
+  const note = document.getElementById('recipeNote');
+  renderRecipes(defaults);
+  note.textContent = 'Here are some quick ideas — or generate from your pantry!';
+}
+
 async function generateRecipes() {
   if (!GEMINI_API_KEY) {
     showToast('Gemini API key not configured. Set GEMINI_API_KEY in Railway variables.', 'danger');

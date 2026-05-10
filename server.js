@@ -133,46 +133,13 @@ app.post('/api/verify-otp', (req, res) => {
 });
 
 // ── INJECT ENV & SERVE HTML ───────────────────────────────────
-// ── ANTHROPIC API PROXY ──────────────────────────────────────
-// Proxies requests to Anthropic API so the API key stays server-side
-app.post('/api/anthropic', async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY not configured on server.' } });
-  }
-  try {
-    const body = JSON.stringify(req.body);
-    const options = {
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-    const proxyReq = https.request(options, (proxyRes) => {
-      let data = '';
-      proxyRes.on('data', c => data += c);
-      proxyRes.on('end', () => {
-        res.status(proxyRes.statusCode).json(JSON.parse(data));
-      });
-    });
-    proxyReq.on('error', (err) => res.status(500).json({ error: { message: err.message } }));
-    proxyReq.write(body);
-    proxyReq.end();
-  } catch (err) {
-    res.status(500).json({ error: { message: err.message } });
-  }
-});
-
 function injectEnv(html) {
   const envScript = `
     <script>
       window.ENV = {
         SUPABASE_URL: "${process.env.SUPABASE_URL || ''}",
-        SUPABASE_ANON_KEY: "${process.env.SUPABASE_ANON_KEY || ''}"
+        SUPABASE_ANON_KEY: "${process.env.SUPABASE_ANON_KEY || ''}",
+        GEMINI_API_KEY: "${process.env.GEMINI_API_KEY || ''}"
       };
     </script>
   `;

@@ -264,7 +264,6 @@ function enterApp() {
   setGreeting();
   loadPantry();
   loadFavorites();
-  loadDefaultRecipes();
 }
 
 function leaveApp() {

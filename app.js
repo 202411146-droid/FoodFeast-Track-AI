@@ -9,8 +9,8 @@
 const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.supabase.co';
 const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
 
-// Gemini API key (set GEMINI_API_KEY in Railway environment variables)
-const GEMINI_API_KEY = window.ENV?.GEMINI_API_KEY;
+// Claude AI is used via the Anthropic API (no API key needed in client — handled by proxy)
+// Set ANTHROPIC_API_KEY in Railway environment variables
 
 // ── INIT ─────────────────────────────────────────────────────
 const { createClient } = supabase;
@@ -787,37 +787,36 @@ function suggestExpiry(name, category) {
   return exp.toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
-// ── AI IMAGE ANALYSIS (Gemini) ────────────────────────────────
+// ── AI IMAGE ANALYSIS (Claude) ────────────────────────────────
 async function analyzeImage(base64Data, dataUrl) {
-  if (!GEMINI_API_KEY) {
-    showToast('Gemini API key not configured. Set GEMINI_API_KEY in Railway variables.', 'danger');
-    clearImagePreview();
-    return;
-  }
-
   showScanProgress(true);
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      '/api/anthropic',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
               {
-                inline_data: {
-                  mime_type: 'image/jpeg',
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/jpeg',
                   data: base64Data
                 }
               },
               {
-                text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
+                type: 'text',
+                text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {\"name\":\"specific food name\",\"category\":\"produce or dairy or protein or grain or other\",\"emoji\":\"one emoji\"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
               }
             ]
-          }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 800 }
+          }]
         })
       }
     );
@@ -826,13 +825,13 @@ async function analyzeImage(base64Data, dataUrl) {
 
     // Check for API-level errors
     if (result.error) {
-      showToast('Gemini API error: ' + result.error.message, 'danger');
+      showToast('Claude API error: ' + result.error.message, 'danger');
       clearImagePreview();
       return;
     }
 
-    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('Gemini raw response:', raw);
+    const raw = result.content?.[0]?.text || '';
+    console.log('Claude raw response:', raw);
 
     // Robust JSON extraction — find the first [ ... ] block
     let items = [];
@@ -963,13 +962,8 @@ async function addSelectedToPantry() {
 }
 
 // ── DEMO SCAN ─────────────────────────────────────────────────
-// ── RECIPE GENERATION (Gemini) ────────────────────────────────
+// ── RECIPE GENERATION (Claude) ────────────────────────────────
 async function generateRecipes() {
-  if (!GEMINI_API_KEY) {
-    showToast('Gemini API key not configured. Set GEMINI_API_KEY in Railway variables.', 'danger');
-    return;
-  }
-
   if (pantryItems.length === 0) {
     showToast('Add items to your pantry first!', 'danger');
     return;
@@ -978,7 +972,7 @@ async function generateRecipes() {
   const grid = document.getElementById('recipeGrid');
   const note = document.getElementById('recipeNote');
   grid.innerHTML = '<p class="empty-state" style="color:var(--accent)">✦ Generating recipes…</p>';
-  note.textContent = 'Asking Gemini…';
+  note.textContent = 'Asking Claude…';
 
   // Prioritize expiring items
   const today   = new Date();
@@ -994,30 +988,17 @@ async function generateRecipes() {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      '/api/anthropic',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a smart chef assistant. Given these pantry items: ${itemList}
-
-Generate 4 recipes that use these ingredients (prioritize items expiring soon).
-Return ONLY a JSON array. Each recipe object must have:
-- "name": string
-- "emoji": single food emoji
-- "time": string like "20 min"
-- "difficulty": "Easy" | "Medium" | "Hard"
-- "servings": number
-- "usedIngredients": string[] (items from pantry)
-- "missingIngredients": string[] (extra items needed, max 3)
-- "steps": string[] (4-6 concise cooking steps)
-
-Start with [ and end with ]. No extra text, no markdown fences.`
-            }]
-          }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1800,
+          messages: [{
+            role: 'user',
+            content: `You are a smart chef assistant. Given these pantry items: ${itemList}\n\nGenerate 4 recipes that use these ingredients (prioritize items expiring soon).\nReturn ONLY a JSON array. Each recipe object must have:\n- "name": string\n- "emoji": single food emoji\n- "time": string like "20 min"\n- "difficulty": "Easy" | "Medium" | "Hard"\n- "servings": number\n- "usedIngredients": string[] (items from pantry)\n- "missingIngredients": string[] (extra items needed, max 3)\n- "steps": string[] (4-6 concise cooking steps)\n\nStart with [ and end with ]. No extra text, no markdown fences.`
+          }]
         })
       }
     );
@@ -1025,7 +1006,7 @@ Start with [ and end with ]. No extra text, no markdown fences.`
     const result = await response.json();
     if (result.error) throw new Error(result.error.message);
 
-    const raw     = result.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const raw     = result.content?.[0]?.text || '[]';
     const match   = raw.match(/\[[\s\S]*\]/);
     const clean   = match ? match[0] : raw.replace(/```json|```/g, '').trim();
     const recipes = JSON.parse(clean);
@@ -1033,8 +1014,11 @@ Start with [ and end with ]. No extra text, no markdown fences.`
     renderRecipes(recipes);
     note.textContent = `${recipes.length} recipes generated from your pantry`;
   } catch (err) {
-    grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your Gemini API key.</p>';
+    grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your Claude API configuration.</p>';
     note.textContent = '';
+    showToast('Error: ' + err.message, 'danger');
+  }
+}
     showToast('Error: ' + err.message, 'danger');
   }
 }

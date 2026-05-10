@@ -808,7 +808,7 @@ async function analyzeImage(base64Data, dataUrl) {
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 600,
+        max_tokens: 800,
         messages: [{
           role: 'user',
           content: [
@@ -818,7 +818,7 @@ async function analyzeImage(base64Data, dataUrl) {
             },
             {
               type: 'text',
-              text: `Identify food items in this image. Return ONLY a JSON array of objects. Each object must have exactly: {"name":"item name","category":"produce|dairy|protein|grain|other","emoji":"single emoji"}. Be specific with names (e.g. "Fresh Spinach" not just "Vegetable"). 3-8 items max. No extra text, no markdown.`
+              text: 'Look at this image and list every food item you can see. You MUST return a JSON array even if unsure. Each object: {"name":"specific food name","category":"produce or dairy or protein or grain or other","emoji":"one emoji"}. Return 1-10 items. If you see any food at all, include it. Start your response with [ and end with ]. No other text.'
             }
           ]
         }]
@@ -826,23 +826,57 @@ async function analyzeImage(base64Data, dataUrl) {
     });
 
     const result = await response.json();
-    const raw    = result.content?.[0]?.text || '[]';
-    const clean  = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
-    const items  = JSON.parse(clean);
 
-    // Attach suggested expiry to each item
-    items.forEach(item => {
-      item.expiry_date = suggestExpiry(item.name, item.category);
-    });
+    // Check for API-level errors
+    if (result.error) {
+      showToast('API error: ' + result.error.message, 'danger');
+      clearImagePreview();
+      return;
+    }
+
+    const raw = result.content?.[0]?.text || '';
+    console.log('AI raw response:', raw);
+
+    // Robust JSON extraction — find the first [ ... ] block
+    let items = [];
+    try {
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (match) {
+        items = JSON.parse(match[0]);
+      } else {
+        // Try parsing the whole thing as JSON
+        items = JSON.parse(raw);
+      }
+    } catch (parseErr) {
+      console.error('JSON parse failed:', parseErr, 'Raw:', raw);
+      showToast('Could not read AI response. Try a clearer photo.', 'danger');
+      clearImagePreview();
+      return;
+    }
+
+    // Sanitize items — ensure they have required fields
+    items = items.filter(item => item && item.name).map(item => ({
+      name: item.name || 'Unknown item',
+      category: ['produce','dairy','protein','grain','other'].includes(item.category) ? item.category : 'other',
+      emoji: item.emoji || '🥫',
+      expiry_date: suggestExpiry(item.name, item.category || 'other')
+    }));
+
+    if (!items.length) {
+      showToast('No food items detected. Try a clearer or closer photo.', 'danger');
+      clearImagePreview();
+      return;
+    }
 
     scanCount += items.length;
     document.getElementById('statScanned').textContent = scanCount;
 
-    // Remove scan overlay, keep image preview visible
+    // Remove scan overlay, keep image preview
     document.getElementById('scanOverlay')?.remove();
 
     showDetectedItems(items);
   } catch (err) {
+    console.error('analyzeImage error:', err);
     showToast('Analysis failed: ' + err.message, 'danger');
     clearImagePreview();
   } finally {
@@ -867,25 +901,22 @@ function animateProgressBar() {
   }, 120);
 }
 
+// Store scanned items in memory to avoid HTML attribute encoding issues
+let scannedItems = [];
+
 function showDetectedItems(items) {
   const section = document.getElementById('detectedSection');
   const tags    = document.getElementById('foodTags');
   selectedFoodTags.clear();
-
-  if (!items.length) {
-    showToast('No food items detected. Try a clearer photo.', 'danger');
-    return;
-  }
+  scannedItems = items;
 
   tags.innerHTML = items.map((item, i) => {
-    const exp = item.expiry_date ? new Date(item.expiry_date) : null;
+    const exp = item.expiry_date ? new Date(item.expiry_date + 'T12:00:00') : null;
     const expStr = exp ? exp.toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
     const today = new Date(); today.setHours(0,0,0,0);
     const daysLeft = exp ? Math.round((exp - today) / 86400000) : null;
     const urgency = daysLeft !== null ? (daysLeft <= 3 ? 'exp-urgent' : daysLeft <= 7 ? 'exp-warn' : 'exp-ok') : '';
-    return `<div class="food-tag selected" data-index="${i}"
-         onclick="toggleFoodTag(this, ${i})"
-         data-item='${JSON.stringify(item)}'>
+    return `<div class="food-tag selected" data-index="${i}" onclick="toggleFoodTag(this, ${i})">
       <span class="tag-emoji">${item.emoji}</span>
       <span class="tag-name">${item.name}</span>
       ${expStr ? `<span class="tag-expiry ${urgency}">exp ${expStr}</span>` : ''}
@@ -908,7 +939,7 @@ async function addSelectedToPantry() {
 
   tags.forEach(tag => {
     const i = parseInt(tag.dataset.index);
-    if (selectedFoodTags.has(i)) toAdd.push(JSON.parse(tag.dataset.item));
+    if (selectedFoodTags.has(i) && scannedItems[i]) toAdd.push(scannedItems[i]);
   });
 
   if (!toAdd.length) { showToast('Select at least one item.', 'danger'); return; }

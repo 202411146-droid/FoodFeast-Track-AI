@@ -667,21 +667,113 @@ function captureFrame() {
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  analyzeImage(dataUrl.split(',')[1]);
+  stopCamera();
+  showImagePreview(dataUrl);
+  analyzeImage(dataUrl.split(',')[1], dataUrl);
 }
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => analyzeImage(e.target.result.split(',')[1]);
+  reader.onload = e => {
+    showImagePreview(e.target.result);
+    analyzeImage(e.target.result.split(',')[1], e.target.result);
+  };
   reader.readAsDataURL(file);
 }
 
+function showImagePreview(dataUrl) {
+  const box = document.getElementById('cameraBox');
+  // Remove old preview if any
+  const old = document.getElementById('imgPreview');
+  if (old) old.remove();
+  const img = document.createElement('img');
+  img.id = 'imgPreview';
+  img.src = dataUrl;
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:var(--radius);position:absolute;top:0;left:0;z-index:2;';
+  box.style.position = 'relative';
+  box.appendChild(img);
+  // Add scan overlay pulse
+  const pulse = document.createElement('div');
+  pulse.id = 'scanOverlay';
+  pulse.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:none;border-radius:var(--radius);';
+  pulse.innerHTML = '<div id="scanLine" style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,#C85A2A,transparent);box-shadow:0 0 8px #C85A2A;animation:scanAnim 1.2s ease-in-out infinite;"></div>';
+  box.appendChild(pulse);
+}
+
+function clearImagePreview() {
+  document.getElementById('imgPreview')?.remove();
+  document.getElementById('scanOverlay')?.remove();
+}
+
+// ── EXPIRY DATE LOGIC ─────────────────────────────────────────
+// Returns suggested expiry date string (YYYY-MM-DD) based on food type
+function suggestExpiry(name, category) {
+  const n = name.toLowerCase();
+  const today = new Date();
+  let days = 7; // default
+
+  // Produce
+  if (category === 'produce') {
+    if (/banana|avocado/.test(n))         days = 5;
+    else if (/berry|berries|strawb|rasp|blueb/.test(n)) days = 4;
+    else if (/leafy|spinach|lettuce|arugula|kale/.test(n)) days = 5;
+    else if (/herb|basil|cilantro|parsley/.test(n)) days = 7;
+    else if (/mushroom/.test(n))          days = 7;
+    else if (/tomato/.test(n))            days = 7;
+    else if (/apple|pear|grape/.test(n))  days = 14;
+    else if (/citrus|orange|lemon|lime/.test(n)) days = 21;
+    else if (/carrot|beet|potato|onion|garlic/.test(n)) days = 21;
+    else if (/broccoli|cauliflower|zucchini/.test(n)) days = 7;
+    else days = 7;
+  }
+  // Dairy
+  else if (category === 'dairy') {
+    if (/milk/.test(n))                   days = 7;
+    else if (/yogurt|yoghurt/.test(n))    days = 14;
+    else if (/cream/.test(n))             days = 10;
+    else if (/butter/.test(n))            days = 30;
+    else if (/hard.*cheese|cheddar|parmesan|gouda/.test(n)) days = 30;
+    else if (/soft.*cheese|brie|camembert|ricotta/.test(n)) days = 7;
+    else if (/cheese/.test(n))            days = 14;
+    else if (/egg/.test(n))               days = 21;
+    else days = 10;
+  }
+  // Protein
+  else if (category === 'protein') {
+    if (/raw.*chicken|chicken.*raw|ground.*beef|raw.*meat/.test(n)) days = 2;
+    else if (/chicken|beef|pork|lamb|turkey|meat/.test(n)) days = 3;
+    else if (/fish|salmon|tuna|shrimp|seafood/.test(n)) days = 2;
+    else if (/tofu/.test(n))              days = 5;
+    else if (/deli|ham|bacon|sausage/.test(n)) days = 5;
+    else if (/cooked/.test(n))            days = 4;
+    else days = 3;
+  }
+  // Grain
+  else if (category === 'grain') {
+    if (/bread/.test(n))                  days = 5;
+    else if (/cooked.*rice|leftover/.test(n)) days = 4;
+    else days = 30; // dry grains keep long
+  }
+  // Other
+  else {
+    if (/leftover|cooked/.test(n))        days = 4;
+    else if (/sauce|dressing|condiment/.test(n)) days = 30;
+    else if (/juice/.test(n))             days = 7;
+    else days = 14;
+  }
+
+  const exp = new Date(today);
+  exp.setDate(exp.getDate() + days);
+  return exp.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
 // ── AI IMAGE ANALYSIS (Claude) ────────────────────────────────
-async function analyzeImage(base64Data) {
+async function analyzeImage(base64Data, dataUrl) {
   if (!ANTHROPIC_API_KEY) {
     showToast('Anthropic API key not configured. Set ANTHROPIC_API_KEY in Railway variables.', 'danger');
+    clearImagePreview();
     return;
   }
 
@@ -698,7 +790,7 @@ async function analyzeImage(base64Data) {
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 400,
+        max_tokens: 600,
         messages: [{
           role: 'user',
           content: [
@@ -708,7 +800,7 @@ async function analyzeImage(base64Data) {
             },
             {
               type: 'text',
-              text: `Identify food items in this image. Return ONLY a JSON array of objects. Each object: {"name":"item name","category":"produce|dairy|protein|grain|other","emoji":"single emoji"}. 3-8 items max. No extra text.`
+              text: `Identify food items in this image. Return ONLY a JSON array of objects. Each object must have exactly: {"name":"item name","category":"produce|dairy|protein|grain|other","emoji":"single emoji"}. Be specific with names (e.g. "Fresh Spinach" not just "Vegetable"). 3-8 items max. No extra text, no markdown.`
             }
           ]
         }]
@@ -717,15 +809,24 @@ async function analyzeImage(base64Data) {
 
     const result = await response.json();
     const raw    = result.content?.[0]?.text || '[]';
-    const clean  = raw.replace(/```json|```/g, '').trim();
+    const clean  = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
     const items  = JSON.parse(clean);
+
+    // Attach suggested expiry to each item
+    items.forEach(item => {
+      item.expiry_date = suggestExpiry(item.name, item.category);
+    });
 
     scanCount += items.length;
     document.getElementById('statScanned').textContent = scanCount;
 
+    // Remove scan overlay, keep image preview visible
+    document.getElementById('scanOverlay')?.remove();
+
     showDetectedItems(items);
   } catch (err) {
     showToast('Analysis failed: ' + err.message, 'danger');
+    clearImagePreview();
   } finally {
     showScanProgress(false);
   }
@@ -758,12 +859,20 @@ function showDetectedItems(items) {
     return;
   }
 
-  tags.innerHTML = items.map((item, i) => `
-    <div class="food-tag selected" data-index="${i}"
+  tags.innerHTML = items.map((item, i) => {
+    const exp = item.expiry_date ? new Date(item.expiry_date) : null;
+    const expStr = exp ? exp.toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysLeft = exp ? Math.round((exp - today) / 86400000) : null;
+    const urgency = daysLeft !== null ? (daysLeft <= 3 ? 'exp-urgent' : daysLeft <= 7 ? 'exp-warn' : 'exp-ok') : '';
+    return `<div class="food-tag selected" data-index="${i}"
          onclick="toggleFoodTag(this, ${i})"
          data-item='${JSON.stringify(item)}'>
-      ${item.emoji} ${item.name}
-    </div>`).join('');
+      <span class="tag-emoji">${item.emoji}</span>
+      <span class="tag-name">${item.name}</span>
+      ${expStr ? `<span class="tag-expiry ${urgency}">exp ${expStr}</span>` : ''}
+    </div>`;
+  }).join('');
 
   // Pre-select all
   items.forEach((_, i) => selectedFoodTags.add(i));
@@ -791,7 +900,8 @@ async function addSelectedToPantry() {
     name: item.name,
     category: item.category || 'other',
     quantity: '1',
-    emoji: item.emoji || '🥫'
+    emoji: item.emoji || '🥫',
+    expiry_date: item.expiry_date || null
   }));
 
   const { data, error } = await db.from('pantry_items').insert(rows).select();
@@ -801,6 +911,7 @@ async function addSelectedToPantry() {
   renderPantryGrid(pantryItems);
   updateDashboard();
   document.getElementById('detectedSection').classList.add('hidden');
+  clearImagePreview();
   showToast(`✦ ${toAdd.length} item(s) added to pantry!`);
   addNotification(`✦ <strong>${toAdd.length} scanned item${toAdd.length > 1 ? 's' : ''}</strong> added to your pantry via AI scan.`, 'info', '📷');
 }

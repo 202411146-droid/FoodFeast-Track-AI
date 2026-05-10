@@ -107,6 +107,7 @@
       <button class="tab-btn" onclick="switchTab('scan',this)">Scan Food</button>
       <button class="tab-btn" onclick="switchTab('pantry',this)">Pantry</button>
       <button class="tab-btn" onclick="switchTab('recipes',this)">Recipes</button>
+      <button class="tab-btn" onclick="switchTab('favorites',this)">❤ Saved</button>
     </div>
     <!-- NOTIFICATION BELL -->
     <div class="notif-wrap" id="notifWrap">
@@ -214,6 +215,11 @@
         <span class="recipe-note" id="recipeNote"></span>
       </div>
       <div class="recipe-grid" id="recipeGrid"><p class="empty-state">Click "Generate" to get recipe suggestions!</p></div>
+    </div>
+
+    <div id="tab-favorites" class="tab-content">
+      <div class="page-header"><h1>Saved Recipes</h1><p class="page-sub">Your favourite recipes, always available</p></div>
+      <div class="recipe-grid" id="favoritesGrid"><p class="empty-state">No saved recipes yet. Hit ❤ on any recipe to save it!</p></div>
     </div>
   </main>
 </div>

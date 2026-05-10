@@ -1273,6 +1273,16 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 .food-tag.selected .tag-expiry.exp-warn { color: var(--warning); }
 .food-tag.selected .tag-expiry.exp-urgent { color: var(--danger); }
 
+.tag-calories {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255,160,0,0.12);
+  color: #b87000;
+}
+.food-tag.selected .tag-calories { color: #b87000; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 800px) {
   .stats-row { grid-template-columns: repeat(2, 1fr); }

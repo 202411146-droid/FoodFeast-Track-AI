@@ -6,14 +6,8 @@
 // ── CONFIGURATION ────────────────────────────────────────────
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
-// Keys must be set as Railway environment variables - no hardcoded fallbacks to avoid mismatch
-const SUPABASE_URL = window.ENV?.SUPABASE_URL;
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;text-align:center"><h2>Configuration Error</h2><p>SUPABASE_URL and SUPABASE_ANON_KEY environment variables are not set in Railway.</p></div>';
-  throw new Error('Missing Supabase environment variables');
-}
+const SUPABASE_URL = window.ENV?.SUPABASE_URL || 'https://jrnvnmchfmdkgcsvytli.supabase.co';
+const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpybnZubWNoZm1ka2djc3Z5dGxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDUyMDMsImV4cCI6MjA5MzEyMTIwM30.Kw--5RXc2n7VFZ6jidceXS5W8Z6UOPvkcXg5Z3FOnsg';
 
 // Replace with your Anthropic API key (or set in Railway variables)
 const ANTHROPIC_API_KEY = window.ENV?.ANTHROPIC_API_KEY;
@@ -31,43 +25,16 @@ let scanCount    = 0;
 
 // ── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Handle email confirmation redirect from Supabase
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.substring(1));
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    if (accessToken) {
-      const { error } = await db.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      if (!error) {
-        window.history.replaceState(null, '', window.location.pathname);
-        showToast('Email confirmed! Welcome to FoodFeast!');
-      }
-    }
-  }
-
   const { data: { session } } = await db.auth.getSession();
   if (session) {
-    // Only restore session if the user's email is verified
-    if (session.user.email_confirmed_at) {
-      currentUser = session.user;
-      enterApp();
-    } else {
-      await db.auth.signOut();
-    }
+    currentUser = session.user;
+    enterApp();
   }
 
-  db.auth.onAuthStateChange((event, session) => {
-    // Ignore the automatic SIGNED_IN that fires right after signUp()
-    // We only want to enter the app on explicit sign-in, not registration
-    if (event === 'SIGNED_IN' && window._justSignedUp) {
-      window._justSignedUp = false;
-      return;
-    }
+  db.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user ?? null;
-    // Only enter the app if the user's email has been verified
-    if (currentUser && currentUser.email_confirmed_at) enterApp();
-    else if (!currentUser) leaveApp();
+    if (currentUser) enterApp();
+    else leaveApp();
   });
 });
 
@@ -84,34 +51,15 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
   btn.disabled = true;
 
-  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  const { error } = await db.auth.signInWithPassword({ email, password });
 
   btn.textContent = 'Sign In';
   btn.disabled = false;
 
-  if (error) {
-    errEl.textContent = error.message;
-    return;
-  }
-
-  // Block login if email has not been verified yet
-  const user = data?.user;
-  if (user && !user.email_confirmed_at) {
-    // Sign them back out immediately so they can't access the app
-    await db.auth.signOut();
-    // Store email so they can resend from the verify screen
-    window._pendingVerifyEmail = email;
-    // Show the email verification screen
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('verifyScreen').classList.remove('hidden');
-    document.getElementById('verifyEmailAddr').textContent = email;
-    return;
-  }
+  if (error) errEl.textContent = error.message;
 }
 
-// ── AUTH: SIGN UP — Step 1: validate form & send OTP ─────────
-// No account is created here. Nothing touches the database.
-// We just validate the form, then fire /api/send-otp.
+// ── AUTH: SIGN UP ─────────────────────────────────────────────
 async function doSignUp() {
   const email    = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPass').value;
@@ -127,147 +75,23 @@ async function doSignUp() {
   if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
-  btn.textContent = 'Sending code…';
+  btn.textContent = 'Creating account…';
   btn.disabled = true;
 
-  try {
-    const resp = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    const result = await resp.json();
+  const { error } = await db.auth.signUp({ email, password });
 
-    if (!resp.ok || !result.success) {
-      errEl.textContent = result.error || 'Could not send verification email. Please try again.';
-      return;
-    }
+  btn.textContent = 'Create Account';
+  btn.disabled = false;
 
-    // Store credentials temporarily in memory — NOT in DB yet
-    window._pendingVerifyEmail    = email;
-    window._pendingVerifyPassword = password;
-
-    // Show OTP entry screen
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('verifyScreen').classList.remove('hidden');
-    document.getElementById('verifyEmailAddr').textContent = email;
-    document.getElementById('otpInput').value = '';
-    document.getElementById('otpErr').textContent = '';
-
-  } catch (err) {
-    errEl.textContent = 'Network error. Please check your connection.';
-  } finally {
-    btn.textContent = 'Send Verification Code';
-    btn.disabled = false;
-  }
-}
-
-// ── AUTH: SIGN UP — Step 2: verify OTP, THEN create account ──
-// Only after the server confirms the OTP is correct do we call
-// db.auth.signUp(). This is the first moment any DB record is created.
-async function confirmOTP() {
-  const otp   = document.getElementById('otpInput').value.trim();
-  const errEl = document.getElementById('otpErr');
-  const btn   = document.getElementById('otpBtn');
-
-  errEl.textContent = '';
-  if (!otp || otp.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
-
-  btn.textContent = 'Verifying…';
-  btn.disabled = true;
-
-  try {
-    // Step A: confirm OTP with server
-    const resp = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: window._pendingVerifyEmail, otp })
-    });
-    const result = await resp.json();
-
-    if (!resp.ok || !result.verified) {
-      errEl.textContent = result.error || 'Invalid code. Please try again.';
-      btn.textContent = 'Verify & Create Account';
-      btn.disabled = false;
-      return;
-    }
-
-    // Step B: OTP confirmed — NOW create the account in Supabase
-    btn.textContent = 'Creating account…';
-    window._justSignedUp = true;
-
-    const { error } = await db.auth.signUp({
-      email: window._pendingVerifyEmail,
-      password: window._pendingVerifyPassword
-    });
-
-    if (error) {
-      const msg = error.message || '';
-      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
-        errEl.textContent = 'An account with this email already exists. Please sign in.';
-      } else {
-        errEl.textContent = msg;
-      }
-      window._justSignedUp = false;
-      btn.textContent = 'Verify & Create Account';
-      btn.disabled = false;
-      return;
-    }
-
-    // ✅ Account created — sign them out and send to sign-in
-    await db.auth.signOut();
-    window._pendingVerifyPassword = null;
-
-    // Return to auth screen and show success
-    document.getElementById('verifyScreen').classList.add('hidden');
-    document.getElementById('authScreen').classList.remove('hidden');
+  if (error) {
+    // The whitelist trigger raises a postgres exception — surface it cleanly
+    errEl.textContent = error.message.includes('not authorized')
+      ? 'This email is not on the access list. Contact the admin.'
+      : error.message;
+  } else {
+    showToast('Account created! Check your email to confirm, then sign in.');
     switchAuthTab('signin');
-    document.getElementById('loginEmail').value = window._pendingVerifyEmail;
-    showToast('✅ Email verified! Your account is ready. Please sign in.');
-
-  } catch (err) {
-    errEl.textContent = 'Something went wrong. Please try again.';
-    btn.textContent = 'Verify & Create Account';
-    btn.disabled = false;
   }
-}
-
-// ── RESEND OTP ────────────────────────────────────────────────
-async function resendOTP() {
-  const btn = document.getElementById('resendBtn');
-  const errEl = document.getElementById('otpErr');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-  errEl.textContent = '';
-
-  try {
-    const resp = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: window._pendingVerifyEmail })
-    });
-    const result = await resp.json();
-    if (resp.ok && result.success) {
-      showToast('New code sent! Check your inbox.');
-    } else {
-      errEl.textContent = result.error || 'Failed to resend. Please try again.';
-    }
-  } catch (e) {
-    errEl.textContent = 'Network error. Please try again.';
-  }
-
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = 'Resend Code';
-  }, 5000);
-}
-
-function backToSignIn() {
-  document.getElementById('verifyScreen').classList.add('hidden');
-  document.getElementById('authScreen').classList.remove('hidden');
-  switchAuthTab('signin');
-  window._pendingVerifyEmail    = null;
-  window._pendingVerifyPassword = null;
 }
 
 // ── AUTH: SIGN OUT ────────────────────────────────────────────
@@ -285,11 +109,6 @@ function switchAuthTab(tab) {
   document.getElementById('tabSignUp').classList.toggle('active', !isSignIn);
   document.getElementById('loginErr').textContent   = '';
   document.getElementById('signupErr').textContent  = '';
-  // Always re-enable buttons when switching tabs (prevents stuck disabled state)
-  const loginBtn  = document.getElementById('loginBtn');
-  const signupBtn = document.getElementById('signupBtn');
-  if (loginBtn)  { loginBtn.disabled  = false; loginBtn.textContent  = 'Sign In'; }
-  if (signupBtn) { signupBtn.disabled = false; signupBtn.textContent = 'Create Account'; }
 }
 
 // ── APP ENTER / LEAVE ─────────────────────────────────────────
@@ -712,19 +531,6 @@ async function addSelectedToPantry() {
   updateDashboard();
   document.getElementById('detectedSection').classList.add('hidden');
   showToast(`✦ ${toAdd.length} item(s) added to pantry!`);
-}
-
-// ── DEMO SCAN ─────────────────────────────────────────────────
-function runDemoScan() {
-  const demoItems = [
-    { name: 'Spinach',   category: 'produce', emoji: '🥬' },
-    { name: 'Eggs',      category: 'protein', emoji: '🥚' },
-    { name: 'Cheddar',   category: 'dairy',   emoji: '🧀' },
-    { name: 'Tomatoes',  category: 'produce', emoji: '🍅' },
-    { name: 'Bread',     category: 'grain',   emoji: '🍞' }
-  ];
-  showDetectedItems(demoItems);
-  showToast('Demo scan complete — select items to add!');
 }
 
 // ── RECIPE GENERATION (Claude) ────────────────────────────────

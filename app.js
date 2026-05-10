@@ -1124,7 +1124,7 @@ function renderFavoritesGrid(rows) {
     const matchTxt = full ? '✓ All ingredients available' : `⚠ ${r.missingIngredients?.length || 0} ingredient(s) missing`;
     const usedTags    = (r.usedIngredients || []).map(x => `<span class="rtag use">${x}</span>`).join('');
     const missingTags = (r.missingIngredients || []).map(x => `<span class="rtag missing">${x}</span>`).join('');
-    return `<div class="recipe-card" onclick="openRecipeData(${JSON.stringify(JSON.stringify(r))})" style="cursor:pointer">
+    return `<div class="recipe-card" onclick="openRecipeData('${r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" style="cursor:pointer">
       <div class="recipe-img">${r.emoji || '🍽️'}</div>
       <div class="recipe-body">
         <div class="recipe-name">${r.name}</div>
@@ -1184,8 +1184,9 @@ function renderRecipes(recipes) {
   }).join('');
 }
 
-function openRecipeData(rJson) {
-  const r = typeof rJson === 'string' ? JSON.parse(rJson) : rJson;
+function openRecipeData(recipeName) {
+  const r = recipeStore[recipeName];
+  if (!r) { showToast('Recipe data not found.', 'danger'); return; }
   _renderRecipeModal(r);
 }
 

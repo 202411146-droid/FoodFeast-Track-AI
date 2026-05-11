@@ -1181,40 +1181,75 @@ async function generateRecipeImage(recipeName) {
   if (recipeImageCache[recipeName]) return recipeImageCache[recipeName];
   if (!GEMINI_API_KEY) return null;
 
-  try {
-    const prompt = `Generate a professional food photo of "${recipeName}". Beautifully plated dish, appetizing, restaurant-quality, warm natural lighting, overhead or 45-degree angle shot.`;
+  const prompt = `A professional food photograph of ${recipeName}. Overhead shot, beautifully plated, restaurant quality, warm natural lighting, appetizing.`;
 
-    // Use Gemini 2.0 Flash image generation (same key, reliable image output)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
-      {
+  // Try Imagen 3 first, then fall back to gemini-2.0-flash image gen
+  const endpoints = [
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`,
+      method: 'imagen',
+      body: {
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 }
+      }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      method: 'gemini',
+      body: {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+      }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+      method: 'gemini',
+      body: {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+      }
+    }
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const response = await fetch(ep.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT'],
-            responseMimeType: 'image/jpeg'
-          }
-        })
+        body: JSON.stringify(ep.body)
+      });
+
+      const data = await response.json();
+      console.log(`[RecipeImg] ${ep.method} response:`, JSON.stringify(data).substring(0, 300));
+
+      if (data.error) {
+        console.warn(`[RecipeImg] ${ep.method} error: ${data.error.message}`);
+        continue;
       }
-    );
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
+      let b64 = null, mime = 'image/jpeg';
 
-    // Find the inline image part in the response
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imgPart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
-    if (!imgPart) throw new Error('No image part in response');
+      if (ep.method === 'imagen') {
+        b64 = data.predictions?.[0]?.bytesBase64Encoded;
+      } else {
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const imgPart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+        if (imgPart) { b64 = imgPart.inlineData.data; mime = imgPart.inlineData.mimeType; }
+      }
 
-    const dataUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-    recipeImageCache[recipeName] = dataUrl;
-    return dataUrl;
-  } catch (err) {
-    console.warn('Image generation failed for', recipeName, err.message);
-    return null;
+      if (b64) {
+        const dataUrl = `data:${mime};base64,${b64}`;
+        recipeImageCache[recipeName] = dataUrl;
+        console.log(`[RecipeImg] SUCCESS via ${ep.method}`);
+        return dataUrl;
+      }
+    } catch (err) {
+      console.warn(`[RecipeImg] fetch failed (${ep.method}):`, err.message);
+    }
   }
+
+  console.error('[RecipeImg] All endpoints failed for:', recipeName);
+  return null;
 }
 
 // After renderRecipes renders cards, asynchronously inject real photos
@@ -1237,7 +1272,8 @@ async function loadRecipeImages(recipes) {
     } else {
       imgBox.classList.remove('loading');
       imgBox.textContent = r.emoji || '🍽️';
-      showToast(`Could not generate image for "${r.name}". Check browser console for details.`, 'danger');
+      // Open browser DevTools > Console to see the exact API error
+      showToast(`Image gen failed — open DevTools Console (F12) for the exact API error.`, 'danger');
     }
   }
 }

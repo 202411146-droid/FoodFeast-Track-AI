@@ -3,7 +3,7 @@
   background: none;
   border: none;
   color: var(--muted);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -27,7 +27,7 @@
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   text-align: center;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 22px;
   font-weight: 700;
   color: var(--text);
@@ -61,7 +61,7 @@
   background: none;
   border: none;
   color: var(--accent);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
@@ -104,7 +104,7 @@
 }
 
 html, body {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -114,7 +114,7 @@ html, body {
 }
 
 h1, h2, h3, .nav-brand, .auth-logo, .stat-val, .food-name, .recipe-name {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -191,7 +191,7 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   color: var(--text);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s, background 0.15s;
@@ -236,7 +236,7 @@ a:hover { text-decoration: underline; }
   background: var(--accent);
   border: none;
   color: #FFFFFF;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -251,7 +251,7 @@ a:hover { text-decoration: underline; }
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 13px;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
@@ -300,7 +300,7 @@ a:hover { text-decoration: underline; }
   border: none;
   background: transparent;
   color: var(--muted);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -341,7 +341,7 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
@@ -404,7 +404,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 }
 
 .card-title {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 16px;
@@ -414,7 +414,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   color: var(--text);
 }
 .card-subtitle {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 12px;
   color: var(--muted);
   font-weight: 400;
@@ -547,7 +547,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   text-align: center;
 }
 .scan-analyzing {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   color: var(--accent);
   margin-bottom: 12px;
@@ -586,7 +586,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   background: var(--accent);
   border: none;
   color: #FFFFFF;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -665,7 +665,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   color: var(--text);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s;
@@ -678,7 +678,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   color: var(--text);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   outline: none;
   cursor: pointer;
@@ -696,7 +696,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   background: var(--accent);
   border: none;
   color: #FFFFFF;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -772,7 +772,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -1075,7 +1075,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   right: -5px;
   background: var(--danger);
   color: #fff;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 9px;
   font-weight: 700;
   min-width: 16px;
@@ -1118,7 +1118,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 }
 
 .notif-title {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 14px;
   font-weight: 700;
   color: var(--text);
@@ -1127,7 +1127,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 .notif-clear-all {
   background: none;
   border: none;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 12px;
   color: var(--muted);
   cursor: pointer;
@@ -1340,7 +1340,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   border-radius: 6px;
   background: transparent;
   color: var(--muted);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

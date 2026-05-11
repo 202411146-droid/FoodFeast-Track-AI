@@ -262,6 +262,7 @@ function enterApp() {
   document.getElementById('userAvatar').textContent = username.charAt(0).toUpperCase();
 
   setGreeting();
+  pantryItems = [];
   recipeStore = {};
   loadPantry();
   loadFavorites();
@@ -271,6 +272,8 @@ function leaveApp() {
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
   pantryItems = [];
+  recipeStore = {};
+  favoriteIds = new Set();
 }
 
 // ── GREETING ──────────────────────────────────────────────────

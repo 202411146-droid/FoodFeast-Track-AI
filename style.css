@@ -156,8 +156,9 @@ a:hover { text-decoration: underline; }
   color: var(--accent);
   margin-bottom: 6px;
   letter-spacing: -0.5px;
+  font-family: 'Showcard Gothic', 'Times New Roman', Times, serif;
 }
-.auth-logo span { color: var(--text); font-weight: 400; }
+.auth-logo span { color: var(--text); font-weight: 400; font-family: 'Showcard Gothic', 'Times New Roman', Times, serif; }
 
 .auth-sub {
   color: var(--muted);
@@ -282,8 +283,9 @@ a:hover { text-decoration: underline; }
   color: var(--accent);
   letter-spacing: -0.3px;
   white-space: nowrap;
+  font-family: 'Showcard Gothic', 'Times New Roman', Times, serif;
 }
-.nav-brand span { color: var(--text); font-weight: 400; }
+.nav-brand span { color: var(--text); font-weight: 400; font-family: 'Showcard Gothic', 'Times New Roman', Times, serif; }
 
 .nav-tabs {
   display: flex;

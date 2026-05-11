@@ -1166,9 +1166,6 @@ Start with [ and end with ]. No extra text, no markdown fences.`
     // Update dashboard stat
     const readyCount = recipes.filter(r => r.missingIngredients?.length === 0).length;
     document.getElementById('statRecipes').textContent = readyCount;
-
-    // Generate real food images for each recipe card asynchronously
-    recipes.forEach((r, i) => generateAndInjectRecipeImage(r, i));
   } catch (err) {
     grid.innerHTML = '<p class="empty-state">Recipe generation failed. Check your Gemini API key.</p>';
     note.textContent = '';
@@ -1218,59 +1215,6 @@ async function toggleFavorite(recipeName, btnEl) {
     });
     showToast('Recipe saved! ❤️');
     loadFavorites();
-  }
-}
-
-// ── RECIPE IMAGE GENERATION (Gemini Imagen) ───────────────────
-async function generateAndInjectRecipeImage(recipe, index) {
-  if (!GEMINI_API_KEY) return;
-
-  const prompt = `A professional food photography shot of "${recipe.name}". ` +
-    `Beautifully plated on a clean plate, soft natural lighting, shallow depth of field, ` +
-    `overhead or 45-degree angle, high resolution, appetizing, restaurant quality. ` +
-    `Key ingredients visible: ${(recipe.usedIngredients || []).slice(0, 4).join(', ')}.`;
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '16:9' }
-        })
-      }
-    );
-
-    const result = await response.json();
-    const b64 = result.predictions?.[0]?.bytesBase64Encoded;
-    if (!b64) return;
-
-    const imgSrc = `data:image/png;base64,${b64}`;
-
-    // Store image on recipeStore so modal can use it
-    if (recipeStore[recipe.name]) recipeStore[recipe.name]._imgSrc = imgSrc;
-
-    // Inject into recipe card
-    const card = document.querySelector(`.recipe-card[data-index="${index}"]`);
-    if (card) {
-      const imgBox = card.querySelector('.recipe-img');
-      if (imgBox) {
-        imgBox.innerHTML = `<img src="${imgSrc}" alt="${recipe.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius) var(--radius) 0 0;" />`;
-        imgBox.classList.remove('loading');
-        imgBox.style.padding = '0';
-        imgBox.style.fontSize = '0';
-      }
-      // Update stored recipe data in card for modal
-      try {
-        const stored = JSON.parse(card.dataset.recipe);
-        stored._imgSrc = imgSrc;
-        card.dataset.recipe = JSON.stringify(stored);
-      } catch(e) {}
-    }
-  } catch (err) {
-    console.warn('Recipe image generation failed for', recipe.name, err);
   }
 }
 
@@ -1330,7 +1274,18 @@ function renderRecipes(recipes) {
     const isSaved = favoriteIds.has(r.name);
 
     return `<div class="recipe-card" onclick="openRecipe(${i})" data-index="${i}" data-recipe='${JSON.stringify(r).replace(/'/g, '&#39;')}'>
-      <div class="recipe-img loading">${r.emoji || '🍽️'}</div>
+      <div class="recipe-img">${r.emoji || '🍽️'}</div>
+      <div class="recipe-body">
+        <div class="recipe-name">${r.name}</div>
+        <div class="recipe-meta">
+          <span>⏱ ${r.time}</span>
+          <span>👤 ${r.servings} servings</span>
+          <span>${r.difficulty}</span>
+        </div>
+        <div class="recipe-match ${matchCls}">${matchTxt}</div>
+        <div class="recipe-tags">${usedTags}${missingTags}</div>
+      </div>
+      <button class="fav-btn ${isSaved ? 'saved' : ''}" data-recipe="${r.name.replace(/"/g,'&quot;')}"
         title="${isSaved ? 'Remove from saved' : 'Save recipe'}"
         onclick="event.stopPropagation(); toggleFavorite(this.dataset.recipe, this)">
         ${isSaved ? '❤️' : '🤍'}
@@ -1363,7 +1318,7 @@ function _renderRecipeModal(r) {
 
   document.getElementById('recipeModalContent').innerHTML = `
     <div class="recipe-detail-header">
-      <div class="recipe-detail-emoji">${r._imgSrc ? `<img src="${r._imgSrc}" alt="${r.name}" style="width:120px;height:85px;object-fit:cover;border-radius:10px;" />` : (r.emoji || '🍽️')}</div>
+      <div class="recipe-detail-emoji">${r.emoji || '🍽️'}</div>
       <div class="recipe-detail-info">
         <h2>${r.name}</h2>
         <div class="recipe-detail-meta">

@@ -3,6 +3,42 @@
 //  Supabase-powered pantry + AI recipe generation
 // ============================================================
 
+// ── Password strength indicator ──────────────────────────────
+function updateStrength(val) {
+  const bar   = document.getElementById('strengthBar');
+  const fill  = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  const hLen  = document.getElementById('hint-len');
+  const hUp   = document.getElementById('hint-upper');
+  const hNum  = document.getElementById('hint-num');
+  if (!bar) return;
+
+  const hasLen   = val.length >= 8;
+  const hasUpper = /[A-Z]/.test(val);
+  const hasNum   = /[0-9]/.test(val);
+  const hasSpec  = /[^a-zA-Z0-9]/.test(val);
+
+  hLen.style.color  = hasLen   ? '#22c55e' : '#aaa';
+  hUp.style.color   = hasUpper ? '#22c55e' : '#aaa';
+  hNum.style.color  = hasNum   ? '#22c55e' : '#aaa';
+
+  const score = [hasLen, hasUpper, hasNum, hasSpec, val.length >= 12].filter(Boolean).length;
+
+  bar.style.display = val.length ? 'block' : 'none';
+  const configs = [
+    { w:'20%', bg:'#ef4444', txt:'Weak' },
+    { w:'40%', bg:'#f97316', txt:'Fair' },
+    { w:'60%', bg:'#eab308', txt:'Good' },
+    { w:'80%', bg:'#84cc16', txt:'Strong' },
+    { w:'100%',bg:'#22c55e', txt:'Very Strong' },
+  ];
+  const cfg = configs[Math.max(0, score - 1)] || configs[0];
+  fill.style.width      = val.length ? cfg.w  : '0%';
+  fill.style.background = val.length ? cfg.bg : 'transparent';
+  label.textContent     = val.length ? cfg.txt : '';
+  label.style.color     = val.length ? cfg.bg : 'var(--muted)';
+}
+
 // ── CONFIGURATION ────────────────────────────────────────────
 // Read from Railway environment variables (injected by server.js)
 // Fallback to window.ENV for Railway, or hardcoded values for local dev
@@ -93,7 +129,9 @@ async function doSignUp() {
   if (!/^[a-zA-Z0-9_]+$/.test(username)) { errEl.textContent = 'Username can only contain letters, numbers, and underscores.'; return; }
   if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
   if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
-  if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password.length < 8)             { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (!/[A-Z]/.test(password))         { errEl.textContent = 'Password must contain at least one uppercase letter.'; return; }
+  if (!/[0-9]/.test(password))         { errEl.textContent = 'Password must contain at least one number.'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
   btn.textContent = 'Sending code…';

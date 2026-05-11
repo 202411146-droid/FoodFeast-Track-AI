@@ -45,11 +45,20 @@
         <input type="email" id="signupEmail" placeholder="yourname@gmail.com" />
       </div>
       <div class="field">
-        <label>Password <span style="color:var(--muted);font-size:11px">(min. 6 characters)</span></label>
+        <label>Password <span style="color:var(--muted);font-size:11px">(min. 8 chars, uppercase &amp; number)</span></label>
         <div class="pass-wrap">
-          <input type="password" id="signupPass" placeholder="••••••••" />
+          <input type="password" id="signupPass" placeholder="••••••••" oninput="updateStrength(this.value)" />
           <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)">👁</button>
         </div>
+        <div id="strengthBar" style="margin-top:6px;height:5px;border-radius:4px;background:#e0e0e0;overflow:hidden;display:none">
+          <div id="strengthFill" style="height:100%;width:0%;transition:width .3s,background .3s;border-radius:4px"></div>
+        </div>
+        <div id="strengthLabel" style="font-size:11px;margin-top:3px;color:var(--muted)"></div>
+        <ul id="strengthHints" style="font-size:11px;margin:4px 0 0 14px;padding:0;color:var(--muted);list-style:disc">
+          <li id="hint-len"  style="color:#aaa">At least 8 characters</li>
+          <li id="hint-upper" style="color:#aaa">At least one uppercase letter</li>
+          <li id="hint-num"  style="color:#aaa">At least one number</li>
+        </ul>
       </div>
       <div class="field">
         <label>Confirm password</label>

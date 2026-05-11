@@ -1182,16 +1182,20 @@ async function generateRecipeImage(recipeName) {
   if (!GEMINI_API_KEY) return null;
 
   try {
-    const prompt = `Professional food photography of ${recipeName}. Beautifully plated, overhead or 45-degree angle shot, warm natural lighting, rustic wooden table, garnished and restaurant-quality presentation. Ultra-realistic, high resolution, appetizing.`;
+    const prompt = `Generate a professional food photo of "${recipeName}". Beautifully plated dish, appetizing, restaurant-quality, warm natural lighting, overhead or 45-degree angle shot.`;
 
+    // Use Gemini 2.0 Flash image generation (same key, reliable image output)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '4:3' }
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE', 'TEXT'],
+            responseMimeType: 'image/jpeg'
+          }
         })
       }
     );
@@ -1199,10 +1203,12 @@ async function generateRecipeImage(recipeName) {
     const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
-    const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-    if (!b64) throw new Error('No image returned');
+    // Find the inline image part in the response
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imgPart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+    if (!imgPart) throw new Error('No image part in response');
 
-    const dataUrl = `data:image/png;base64,${b64}`;
+    const dataUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
     recipeImageCache[recipeName] = dataUrl;
     return dataUrl;
   } catch (err) {
@@ -1224,13 +1230,14 @@ async function loadRecipeImages(recipes) {
     const dataUrl = await generateRecipeImage(r.name);
     if (dataUrl) {
       imgBox.classList.remove('loading');
-      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" loading="lazy">`;
+      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
       // Also cache on the recipe object for modal use
       r._imgUrl = dataUrl;
-      recipeStore[r.name]._imgUrl = dataUrl;
+      if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = dataUrl;
     } else {
       imgBox.classList.remove('loading');
-      imgBox.innerHTML = r.emoji || '🍽️';
+      imgBox.textContent = r.emoji || '🍽️';
+      showToast(`Could not generate image for "${r.name}". Check browser console for details.`, 'danger');
     }
   }
 }

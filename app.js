@@ -1173,6 +1173,68 @@ Start with [ and end with ]. No extra text, no markdown fences.`
   }
 }
 
+// ── RECIPE IMAGE GENERATION (Gemini Imagen 3) ─────────────────
+// Cache so we don't re-generate images for the same recipe name
+const recipeImageCache = {};
+
+async function generateRecipeImage(recipeName) {
+  if (recipeImageCache[recipeName]) return recipeImageCache[recipeName];
+  if (!GEMINI_API_KEY) return null;
+
+  try {
+    const prompt = `Professional food photography of ${recipeName}. Beautifully plated, overhead or 45-degree angle shot, warm natural lighting, rustic wooden table, garnished and restaurant-quality presentation. Ultra-realistic, high resolution, appetizing.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: { sampleCount: 1, aspectRatio: '4:3' }
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+    if (!b64) throw new Error('No image returned');
+
+    const dataUrl = `data:image/png;base64,${b64}`;
+    recipeImageCache[recipeName] = dataUrl;
+    return dataUrl;
+  } catch (err) {
+    console.warn('Image generation failed for', recipeName, err.message);
+    return null;
+  }
+}
+
+// After renderRecipes renders cards, asynchronously inject real photos
+async function loadRecipeImages(recipes) {
+  for (let i = 0; i < recipes.length; i++) {
+    const r = recipes[i];
+    const card = document.querySelector(`.recipe-card[data-index="${i}"]`);
+    if (!card) continue;
+
+    const imgBox = card.querySelector('.recipe-img');
+    if (!imgBox) continue;
+
+    const dataUrl = await generateRecipeImage(r.name);
+    if (dataUrl) {
+      imgBox.classList.remove('loading');
+      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" loading="lazy">`;
+      // Also cache on the recipe object for modal use
+      r._imgUrl = dataUrl;
+      recipeStore[r.name]._imgUrl = dataUrl;
+    } else {
+      imgBox.classList.remove('loading');
+      imgBox.innerHTML = r.emoji || '🍽️';
+    }
+  }
+}
+
 // ── FAVORITES ─────────────────────────────────────────────────
 let favoriteIds  = new Set(); // recipe names that are saved
 let recipeStore  = {};        // name -> recipe object, populated on generate
@@ -1274,7 +1336,7 @@ function renderRecipes(recipes) {
     const isSaved = favoriteIds.has(r.name);
 
     return `<div class="recipe-card" onclick="openRecipe(${i})" data-index="${i}" data-recipe='${JSON.stringify(r).replace(/'/g, '&#39;')}'>
-      <div class="recipe-img">${r.emoji || '🍽️'}</div>
+      <div class="recipe-img loading">${r.emoji || '🍽️'}</div>
       <div class="recipe-body">
         <div class="recipe-name">${r.name}</div>
         <div class="recipe-meta">
@@ -1292,6 +1354,11 @@ function renderRecipes(recipes) {
       </button>
     </div>`;
   }).join('');
+
+  // Asynchronously replace emoji placeholders with real AI-generated food photos
+  if (GEMINI_API_KEY) {
+    loadRecipeImages(recipes);
+  }
 }
 
 function openRecipeData(recipeName) {
@@ -1318,7 +1385,7 @@ function _renderRecipeModal(r) {
 
   document.getElementById('recipeModalContent').innerHTML = `
     <div class="recipe-detail-header">
-      <div class="recipe-detail-emoji">${r.emoji || '🍽️'}</div>
+      <div class="recipe-detail-emoji">${r._imgUrl ? `<img src="${r._imgUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : (r.emoji || '🍽️')}</div>
       <div class="recipe-detail-info">
         <h2>${r.name}</h2>
         <div class="recipe-detail-meta">

@@ -904,7 +904,19 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 
 /* ===== RECIPE DETAIL MODAL ===== */
 .recipe-detail-header { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; }
-.recipe-detail-emoji { font-size: 56px; }
+.recipe-detail-emoji {
+  font-size: 56px;
+  width: 120px;
+  height: 90px;
+  min-width: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
 .recipe-detail-info h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 6px; }
 .recipe-detail-meta { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
 .recipe-section { margin-bottom: 20px; }

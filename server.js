@@ -200,19 +200,17 @@ app.get('/api/verify-reset-token', (req, res) => {
 });
 
 // ── FORGOT PASSWORD: SET NEW PASSWORD ────────────────────────
-// Strategy: server sets a random temp password via admin API,
-// returns it to client, client signs in with temp pass,
-// then immediately calls updateUser() with the new password.
+// Server looks up the user by email via admin API and sets the
+// new password directly — no temp password needed.
 app.post('/api/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token || !newPassword) return res.status(400).json({ error: 'Missing token or password' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
   const record = pendingResets.get(token);
   if (!record || Date.now() > record.expiresAt) {
     return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
   }
-
-  const tempPass = crypto.randomBytes(16).toString('hex');
 
   try {
     const admin = getAdminDb();
@@ -228,12 +226,12 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'No account found for this email.' });
     }
 
-    // Set temp password
-    const { error: updateErr } = await admin.auth.admin.updateUserById(foundUser.id, { password: tempPass });
+    // Set the actual new password directly — no temp password middleman
+    const { error: updateErr } = await admin.auth.admin.updateUserById(foundUser.id, { password: newPassword });
     if (updateErr) throw updateErr;
 
     pendingResets.delete(token);
-    res.json({ success: true, email: record.email, tempPass });
+    res.json({ success: true });
   } catch (err) {
     console.error('Reset password error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to reset password.' });

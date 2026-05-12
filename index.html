@@ -149,6 +149,35 @@
   </div>
 </div>
 
+<!-- RESET PASSWORD SCREEN (reached via email link /reset-password?token=...) -->
+<div id="resetPasswordScreen" class="auth-wrap hidden">
+  <div class="auth-right">
+    <div class="auth-card" style="text-align:center">
+      <img src="FoodFeast_Track_AI_Logo.png" class="auth-logo-img" alt="logo" />
+      <div class="auth-logo">FoodFeast <span>Track AI</span></div>
+      <h2 style="font-size:20px;font-weight:700;margin:16px 0 6px">Set New Password</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Enter your new password below.</p>
+      <div class="field" style="text-align:left">
+        <label>New Password</label>
+        <div class="pass-wrap">
+          <input type="password" id="resetNewPass" placeholder="••••••••" />
+          <button class="eye-btn" type="button" onclick="togglePass('resetNewPass',this)"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="field" style="text-align:left;margin-top:12px">
+        <label>Confirm Password</label>
+        <div class="pass-wrap">
+          <input type="password" id="resetConfirmPass" placeholder="••••••••" />
+          <button class="eye-btn" type="button" onclick="togglePass('resetConfirmPass',this)"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <p class="err-msg" id="resetErr"></p>
+      <p id="resetSuccess" style="color:green;font-size:13px;margin-bottom:10px;display:none">✅ Password updated! Redirecting to login…</p>
+      <button class="btn-primary" id="resetSubmitBtn" onclick="doResetPassword()" style="width:100%;margin-top:8px">Set New Password</button>
+    </div>
+  </div>
+</div>
+
 <!-- MAIN APP -->
 <div id="mainApp" class="app hidden">
   <nav class="nav">

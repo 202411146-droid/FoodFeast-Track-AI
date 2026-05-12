@@ -1144,6 +1144,7 @@ Return ONLY a JSON array. Each recipe object must have:
 - "usedIngredients": string[] (items from pantry)
 - "missingIngredients": string[] (extra items needed, max 3)
 - "steps": string[] (4-6 concise cooking steps)
+- "imageQuery": 2-3 word english food search term for this dish (e.g. "grilled salmon", "beef stew")
 
 Start with [ and end with ]. No extra text, no markdown fences.`
             }]
@@ -1176,45 +1177,46 @@ Start with [ and end with ]. No extra text, no markdown fences.`
 // ── RECIPE IMAGE GENERATION (Unsplash — no API key needed) ──────
 const recipeImageCache = {};
 
-async function generateRecipeImage(recipeName) {
-  if (recipeImageCache[recipeName]) return recipeImageCache[recipeName];
-
-  // Build search query from recipe name
-  const query = encodeURIComponent(
-    recipeName.replace(/(with|and|in|on)/gi, '').replace(/\s+/g, ' ').trim().split(' ').slice(0, 5).join(' ') + ' food dish'
-  );
-
-  // Use Unsplash directly as <img src> — avoids CORS (img tags are cross-origin safe)
-  // Add a random seed so each recipe gets a unique photo on each generate
-  const seed = Math.random().toString(36).slice(2, 7);
-  const url = `https://source.unsplash.com/featured/600x400/?${query}&sig=${seed}`;
-
-  recipeImageCache[recipeName] = url;
-  return url;
+function getRecipeImageUrl(recipe) {
+  // Use Loremflickr — free, no key, no CORS issues, food-specific real photos
+  // imageQuery comes from Gemini, falls back to recipe name
+  const q = (recipe.imageQuery || recipe.name)
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .split(' ')
+    .slice(0, 3)
+    .join(',');
+  // Unique seed per recipe so images differ
+  const seed = [...q].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return `https://loremflickr.com/600/400/${encodeURIComponent(q)},food?lock=${seed}`;
 }
 
-async function loadRecipeImages(recipes) {
-  for (let i = 0; i < recipes.length; i++) {
-    const r = recipes[i];
+
+function loadRecipeImages(recipes) {
+  recipes.forEach((r, i) => {
     const card = document.querySelector(`.recipe-card[data-index="${i}"]`);
-    if (!card) continue;
+    if (!card) return;
     const imgBox = card.querySelector('.recipe-img');
-    if (!imgBox) continue;
-    const imgUrl = await generateRecipeImage(r.name);
-    imgBox.classList.remove('loading');
-    if (imgUrl) {
-      const img = new Image();
-      img.alt = r.name;
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-      img.onload = () => { imgBox.innerHTML = ''; imgBox.appendChild(img); };
-      img.onerror = () => { imgBox.textContent = r.emoji || '🍽️'; };
-      img.src = imgUrl;
-      r._imgUrl = imgUrl;
-      if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = imgUrl;
-    } else {
+    if (!imgBox) return;
+
+    const imgUrl = getRecipeImageUrl(r);
+    r._imgUrl = imgUrl;
+    if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = imgUrl;
+
+    const img = new Image();
+    img.alt = r.name;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    img.onload = () => {
+      imgBox.classList.remove('loading');
+      imgBox.innerHTML = '';
+      imgBox.appendChild(img);
+    };
+    img.onerror = () => {
+      imgBox.classList.remove('loading');
       imgBox.textContent = r.emoji || '🍽️';
-    }
-  }
+    };
+    img.src = imgUrl;
+  });
 }
 
 // ── FAVORITES ─────────────────────────────────────────────────

@@ -130,12 +130,13 @@
 <div id="mainApp" class="app hidden">
   <nav class="nav">
     <div class="nav-brand">FoodFeast <span>Track AI</span></div>
-    <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('dashboard',this)">Dashboard</button>
-      <button class="tab-btn" onclick="switchTab('scan',this)">Scan Food</button>
-      <button class="tab-btn" onclick="switchTab('pantry',this)">Pantry</button>
-      <button class="tab-btn" onclick="switchTab('recipes',this)">Recipes</button>
-      <button class="tab-btn" onclick="switchTab('favorites',this)">❤ Saved</button>
+    <!-- Desktop tabs (hidden on mobile) -->
+    <div class="nav-tabs nav-tabs-desktop">
+      <button class="tab-btn active" onclick="switchTab('dashboard',this)" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('scan',this)" data-tab="scan">Scan Food</button>
+      <button class="tab-btn" onclick="switchTab('pantry',this)" data-tab="pantry">Pantry</button>
+      <button class="tab-btn" onclick="switchTab('recipes',this)" data-tab="recipes">Recipes</button>
+      <button class="tab-btn" onclick="switchTab('favorites',this)" data-tab="favorites">❤ Saved</button>
     </div>
     <!-- NOTIFICATION BELL -->
     <div class="notif-wrap" id="notifWrap">
@@ -158,6 +159,30 @@
       <span id="userEmailDisplay"></span>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
+  </nav>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bottom-nav-btn active" onclick="switchTab('dashboard',this)" data-tab="dashboard">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">Home</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="switchTab('scan',this)" data-tab="scan">
+      <span class="bnav-icon">📷</span>
+      <span class="bnav-label">Scan</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="switchTab('pantry',this)" data-tab="pantry">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">Pantry</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="switchTab('recipes',this)" data-tab="recipes">
+      <span class="bnav-icon">🍽</span>
+      <span class="bnav-label">Recipes</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="switchTab('favorites',this)" data-tab="favorites">
+      <span class="bnav-icon">❤️</span>
+      <span class="bnav-label">Saved</span>
+    </button>
   </nav>
   <main>
     <!-- DASHBOARD -->

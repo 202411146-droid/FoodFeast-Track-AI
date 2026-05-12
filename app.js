@@ -1303,6 +1303,27 @@ async function toggleFavorite(recipeName, btnEl) {
   }
 }
 
+// Re-check missingIngredients against current pantry in real time
+function recalcRecipeIngredients(recipe) {
+  const pantryNames = pantryItems.map(p => p.name.toLowerCase().trim());
+
+  // An ingredient is "available" if any pantry item name contains it (or vice versa)
+  function inPantry(ingredient) {
+    const ing = ingredient.toLowerCase().trim();
+    return pantryNames.some(p => p.includes(ing) || ing.includes(p));
+  }
+
+  const allIngredients = [
+    ...(recipe.usedIngredients || []),
+    ...(recipe.missingIngredients || [])
+  ];
+
+  recipe.usedIngredients    = allIngredients.filter(i => inPantry(i));
+  recipe.missingIngredients = allIngredients.filter(i => !inPantry(i));
+  return recipe;
+}
+
+
 async function loadSavedRecipeImages(recipes) {
   for (let i = 0; i < recipes.length; i++) {
     const r = recipes[i];
@@ -1336,6 +1357,7 @@ function renderFavoritesGrid(rows) {
   recipes.forEach(r => { recipeStore[r.name] = r; });
 
   grid.innerHTML = recipes.map((r, i) => {
+    recalcRecipeIngredients(r); // re-check against current pantry
     const full = r.missingIngredients?.length === 0;
     const matchCls = full ? 'full' : 'partial';
     const matchTxt = full ? '✓ All ingredients available' : `⚠ ${r.missingIngredients?.length || 0} ingredient(s) missing`;
@@ -1374,6 +1396,7 @@ function renderRecipes(recipes) {
   recipes.forEach(r => { recipeStore[r.name] = r; });
 
   grid.innerHTML = recipes.map((r, i) => {
+    recalcRecipeIngredients(r); // re-check against current pantry
     const full    = r.missingIngredients?.length === 0;
     const matchCls = full ? 'full' : 'partial';
     const matchTxt = full
@@ -1422,6 +1445,7 @@ function openRecipe(index) {
 }
 
 function _renderRecipeModal(r) {
+  recalcRecipeIngredients(r); // ensure modal reflects current pantry
   const isSaved = favoriteIds.has(r.name);
 
   const ingredientRows = [

@@ -1624,3 +1624,250 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
   margin-bottom: 16px;
   display: block;
 }
+
+/* ===== MOBILE COMPATIBILITY OVERHAUL ===== */
+
+/* Prevent tap highlight and improve touch targets */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, input, select { touch-action: manipulation; }
+
+/* ── AUTH SCREENS (mobile) ── */
+@media (max-width: 600px) {
+  .auth-wrap { flex-direction: column; align-items: stretch; }
+
+  .auth-left {
+    flex: none;
+    padding: 28px 20px 20px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .auth-logo-img { width: 72px; height: 72px; margin-bottom: 10px; }
+  .auth-logo { font-size: 22px; }
+  .auth-sub { font-size: 12px; margin-bottom: 8px; }
+  .auth-features { display: none; } /* hide feature list on small screens */
+
+  .auth-right { padding: 24px 16px 32px; }
+
+  .auth-card {
+    padding: 24px 18px;
+    border-radius: 12px;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
+
+  .auth-tabs { margin-bottom: 20px; }
+  .auth-tab { font-size: 14px; padding: 9px; }
+
+  .field input, .field-sm input, .field-sm select {
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 12px 14px;
+  }
+
+  .btn-primary { padding: 14px; font-size: 15px; }
+  .btn-outline  { padding: 12px; font-size: 14px; width: 100%; }
+
+  /* OTP verify screen */
+  .otp-input { width: 40px; height: 48px; font-size: 20px; }
+  .otp-boxes { gap: 7px; }
+}
+
+/* ── NAV (mobile) ── */
+@media (max-width: 600px) {
+  .nav {
+    height: auto;
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-brand { font-size: 14px; }
+
+  /* Scrollable tab bar */
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 7px 12px;
+    min-height: 36px;
+  }
+
+  /* Collapse email display */
+  #userEmailDisplay { display: none; }
+
+  .user-chip { gap: 6px; }
+  .avatar { width: 28px; height: 28px; font-size: 11px; }
+  .logout-btn { font-size: 11px; padding: 4px 10px; }
+}
+
+/* ── MAIN CONTENT (mobile) ── */
+@media (max-width: 600px) {
+  main { padding: 16px 14px; }
+
+  .page-header { margin-bottom: 18px; }
+  .page-header h1 { font-size: 20px; }
+  .page-sub { font-size: 13px; }
+}
+
+/* ── DASHBOARD (mobile) ── */
+@media (max-width: 600px) {
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card { padding: 16px 14px; }
+  .stat-val { font-size: 26px; }
+  .stat-label { font-size: 10px; }
+
+  .two-col { grid-template-columns: 1fr; gap: 12px; }
+  .card { padding: 16px 14px; }
+  .card-title { font-size: 14px; }
+}
+
+/* ── SCAN (mobile) ── */
+@media (max-width: 600px) {
+  .scan-layout { grid-template-columns: 1fr; gap: 14px; }
+
+  .camera-box { aspect-ratio: 4/3; min-height: 220px; }
+
+  .scan-controls {
+    padding: 16px;
+    gap: 10px;
+  }
+  .btn-scan { padding: 14px; font-size: 14px; min-height: 48px; }
+
+  #foodTags .food-tag {
+    min-width: 140px;
+    max-width: none;
+    flex: 1 1 140px;
+  }
+}
+
+/* ── PANTRY (mobile) ── */
+@media (max-width: 600px) {
+  .pantry-toolbar {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    min-width: 0;
+    flex: 1 1 100%;
+    font-size: 16px; /* prevents iOS zoom */
+  }
+  .filter-select {
+    flex: 1;
+    font-size: 14px;
+  }
+  .btn-add {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .pantry-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .pantry-card { padding: 14px 12px; }
+  .food-emoji { font-size: 26px; }
+  .food-name { font-size: 13px; }
+}
+
+/* ── RECIPES (mobile) ── */
+@media (max-width: 600px) {
+  .recipe-toolbar { gap: 10px; }
+  .btn-generate { width: 100%; justify-content: center; padding: 14px; font-size: 14px; }
+
+  .recipe-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .recipe-img { height: 160px; }
+  .recipe-body { padding: 14px; }
+  .recipe-name { font-size: 15px; }
+}
+
+/* ── MODALS (mobile) ── */
+@media (max-width: 600px) {
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+    padding: 24px 18px;
+    border-bottom: none;
+  }
+  .modal-wide { max-width: 100%; }
+
+  .form-row { grid-template-columns: 1fr; gap: 10px; }
+
+  .field-sm input,
+  .field-sm select { font-size: 16px; }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .modal-actions .btn-primary { width: 100%; padding: 14px; }
+  .modal-actions .btn-outline  { width: 100%; padding: 12px; }
+}
+
+/* ── RECIPE DETAIL MODAL (mobile) ── */
+@media (max-width: 600px) {
+  .recipe-detail-header { flex-direction: column; gap: 12px; }
+  .recipe-detail-emoji { width: 100%; height: 80px; font-size: 48px; border-radius: 12px; }
+  .recipe-detail-meta { flex-wrap: wrap; gap: 8px; font-size: 12px; }
+}
+
+/* ── NOTIFICATION PANEL (mobile) ── */
+@media (max-width: 600px) {
+  .notif-panel {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* ── TOAST (mobile) ── */
+@media (max-width: 600px) {
+  .toast {
+    bottom: 16px;
+    right: 14px;
+    left: 14px;
+    max-width: none;
+    text-align: center;
+  }
+}
+
+/* ── GENERAL TOUCH IMPROVEMENTS ── */
+@media (max-width: 600px) {
+  /* Bigger touch targets */
+  .del-btn { padding: 8px 10px; font-size: 14px; }
+  .fav-btn { width: 40px; height: 40px; font-size: 18px; }
+  .modal-close { width: 36px; height: 36px; font-size: 18px; top: 14px; right: 14px; display: flex; align-items: center; justify-content: center; }
+
+  /* Prevent horizontal scroll */
+  body { overflow-x: hidden; }
+}

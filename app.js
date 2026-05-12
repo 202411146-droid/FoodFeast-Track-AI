@@ -1173,107 +1173,50 @@ Start with [ and end with ]. No extra text, no markdown fences.`
   }
 }
 
-// ── RECIPE IMAGE GENERATION (Gemini Imagen 3) ─────────────────
-// Cache so we don't re-generate images for the same recipe name
+// ── RECIPE IMAGE GENERATION (Unsplash — no API key needed) ──────
 const recipeImageCache = {};
 
 async function generateRecipeImage(recipeName) {
   if (recipeImageCache[recipeName]) return recipeImageCache[recipeName];
-  if (!GEMINI_API_KEY) return null;
-
-  const prompt = `A professional food photograph of ${recipeName}. Overhead shot, beautifully plated, restaurant quality, warm natural lighting, appetizing.`;
-
-  // Try Imagen 3 first, then fall back to gemini-2.0-flash image gen
-  const endpoints = [
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`,
-      method: 'imagen',
-      body: {
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1 }
-      }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      method: 'gemini',
-      body: {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
-      method: 'gemini',
-      body: {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      }
-    }
-  ];
-
-  for (const ep of endpoints) {
-    try {
-      const response = await fetch(ep.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ep.body)
-      });
-
-      const data = await response.json();
-      console.log(`[RecipeImg] ${ep.method} response:`, JSON.stringify(data).substring(0, 300));
-
-      if (data.error) {
-        console.warn(`[RecipeImg] ${ep.method} error: ${data.error.message}`);
-        continue;
-      }
-
-      let b64 = null, mime = 'image/jpeg';
-
-      if (ep.method === 'imagen') {
-        b64 = data.predictions?.[0]?.bytesBase64Encoded;
-      } else {
-        const parts = data.candidates?.[0]?.content?.parts || [];
-        const imgPart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
-        if (imgPart) { b64 = imgPart.inlineData.data; mime = imgPart.inlineData.mimeType; }
-      }
-
-      if (b64) {
-        const dataUrl = `data:${mime};base64,${b64}`;
-        recipeImageCache[recipeName] = dataUrl;
-        console.log(`[RecipeImg] SUCCESS via ${ep.method}`);
-        return dataUrl;
-      }
-    } catch (err) {
-      console.warn(`[RecipeImg] fetch failed (${ep.method}):`, err.message);
-    }
+  try {
+    // Build a short food-focused query from the recipe name
+    const query = encodeURIComponent(
+      recipeName.replace(/with|and|in|on|&/gi, '').replace(/\s+/g, ' ').trim().split(' ').slice(0, 5).join(' ') + ' food'
+    );
+    // Unsplash Source: free, no key, redirects to a real curated photo
+    const url = `https://source.unsplash.com/featured/600x400/?${query}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Unsplash ' + res.status);
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    recipeImageCache[recipeName] = dataUrl;
+    return dataUrl;
+  } catch (err) {
+    console.warn('[RecipeImg] failed for', recipeName, err.message);
+    return null;
   }
-
-  console.error('[RecipeImg] All endpoints failed for:', recipeName);
-  return null;
 }
 
-// After renderRecipes renders cards, asynchronously inject real photos
 async function loadRecipeImages(recipes) {
   for (let i = 0; i < recipes.length; i++) {
     const r = recipes[i];
     const card = document.querySelector(`.recipe-card[data-index="${i}"]`);
     if (!card) continue;
-
     const imgBox = card.querySelector('.recipe-img');
     if (!imgBox) continue;
-
     const dataUrl = await generateRecipeImage(r.name);
+    imgBox.classList.remove('loading');
     if (dataUrl) {
-      imgBox.classList.remove('loading');
-      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
-      // Also cache on the recipe object for modal use
+      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;">`;
       r._imgUrl = dataUrl;
       if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = dataUrl;
     } else {
-      imgBox.classList.remove('loading');
       imgBox.textContent = r.emoji || '🍽️';
-      // Open browser DevTools > Console to see the exact API error
-      showToast(`Image gen failed — open DevTools Console (F12) for the exact API error.`, 'danger');
     }
   }
 }
@@ -1398,10 +1341,8 @@ function renderRecipes(recipes) {
     </div>`;
   }).join('');
 
-  // Asynchronously replace emoji placeholders with real AI-generated food photos
-  if (GEMINI_API_KEY) {
-    loadRecipeImages(recipes);
-  }
+  // Fire async image loading after DOM is ready
+  loadRecipeImages(recipes);
 }
 
 function openRecipeData(recipeName) {
@@ -1428,7 +1369,9 @@ function _renderRecipeModal(r) {
 
   document.getElementById('recipeModalContent').innerHTML = `
     <div class="recipe-detail-header">
-      <div class="recipe-detail-emoji">${r._imgUrl ? `<img src="${r._imgUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : (r.emoji || '🍽️')}</div>
+      <div class="recipe-detail-emoji">${r._imgUrl
+        ? `<img src="${r._imgUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`
+        : (r.emoji || '🍽️')}</div>
       <div class="recipe-detail-info">
         <h2>${r.name}</h2>
         <div class="recipe-detail-meta">

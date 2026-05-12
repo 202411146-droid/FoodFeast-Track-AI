@@ -1177,36 +1177,61 @@ Start with [ and end with ]. No extra text, no markdown fences.`
 // ── RECIPE IMAGE GENERATION (Unsplash — no API key needed) ──────
 const recipeImageCache = {};
 
+// Track used image URLs across recipe generation so no duplicates
+const usedRecipeImages = new Set();
+
 async function getRecipeImageUrl(recipe) {
   const query = (recipe.imageQuery || recipe.name)
     .replace(/[^a-zA-Z0-9 ]/g, '').trim().split(' ').slice(0, 3).join(' ');
 
-  // 1. Try TheMealDB — exact food photo database, free, no key, CORS-safe
+  // Helper: pick first unused meal image from a results array
+  function pickUnused(meals) {
+    if (!meals?.length) return null;
+    for (const meal of meals) {
+      const url = meal.strMealThumb;
+      if (url && !usedRecipeImages.has(url)) {
+        usedRecipeImages.add(url);
+        return url;
+      }
+    }
+    // All used — just return first anyway
+    return meals[0]?.strMealThumb || null;
+  }
+
+  // 1. Exact query match
   try {
     const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
     const data = await res.json();
-    const meal = data.meals?.[0];
-    if (meal?.strMealThumb) return meal.strMealThumb;
+    const url = pickUnused(data.meals);
+    if (url) return url;
   } catch(e) {}
 
-  // 2. Fallback: search by first word (broader match)
-  try {
-    const word = query.split(' ')[0];
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(word)}`);
-    const data = await res.json();
-    const meal = data.meals?.[0];
-    if (meal?.strMealThumb) return meal.strMealThumb;
-  } catch(e) {}
+  // 2. Each keyword in query tried individually
+  for (const word of query.split(' ').filter(w => w.length > 3)) {
+    try {
+      const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(word)}`);
+      const data = await res.json();
+      const url = pickUnused(data.meals);
+      if (url) return url;
+    } catch(e) {}
+  }
 
-  // 3. Fallback: TheMealDB category filter for a cooked food image
-  try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=Seafood`);
-    const data = await res.json();
-    const meals = data.meals || [];
-    // Pick a deterministic meal based on recipe name hash
-    const idx = [...recipe.name].reduce((a,c) => a + c.charCodeAt(0), 0) % meals.length;
-    if (meals[idx]?.strMealThumb) return meals[idx].strMealThumb;
-  } catch(e) {}
+  // 3. Category fallback — cycle through multiple categories to avoid repeats
+  const categories = ['Seafood','Beef','Chicken','Pork','Pasta','Lamb','Vegetarian','Miscellaneous'];
+  const catIdx = [...recipe.name].reduce((a,c) => a + c.charCodeAt(0), 0) % categories.length;
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[(catIdx + i) % categories.length];
+    try {
+      const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${cat}`);
+      const data = await res.json();
+      // Shuffle deterministically using name hash so different recipes pick different meals
+      const meals = data.meals || [];
+      const offset = [...recipe.name].reduce((a,c) => a + c.charCodeAt(0), 0);
+      const rotated = [...meals.slice(offset % meals.length), ...meals.slice(0, offset % meals.length)];
+      const url = pickUnused(rotated);
+      if (url) return url;
+    } catch(e) {}
+  }
 
   return null;
 }
@@ -1353,7 +1378,8 @@ function renderRecipes(recipes) {
     </div>`;
   }).join('');
 
-  // Fire async image loading after DOM is ready
+  // Reset used images tracker and fire async image loading
+  usedRecipeImages.clear();
   loadRecipeImages(recipes);
 }
 

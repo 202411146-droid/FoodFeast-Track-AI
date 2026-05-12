@@ -357,6 +357,40 @@ function togglePass(inputId, btn) {
   btn.innerHTML = show ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 }
 
+
+// ── FORGOT PASSWORD ───────────────────────────────────────────
+function showForgotPassword() {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('forgotScreen').classList.remove('hidden');
+  document.getElementById('forgotEmail').value = document.getElementById('loginEmail').value || '';
+  document.getElementById('forgotErr').textContent = '';
+  document.getElementById('forgotSuccess').style.display = 'none';
+}
+
+function backFromForgot() {
+  document.getElementById('forgotScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+async function doForgotPassword() {
+  const email  = document.getElementById('forgotEmail').value.trim();
+  const errEl  = document.getElementById('forgotErr');
+  const btn    = document.getElementById('forgotBtn');
+  const ok     = document.getElementById('forgotSuccess');
+  errEl.textContent = '';
+  ok.style.display = 'none';
+  if (!email) { errEl.textContent = 'Please enter your email.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/app'
+  });
+  btn.disabled = false;
+  btn.textContent = 'Send Reset Link';
+  if (error) { errEl.textContent = error.message; return; }
+  ok.style.display = 'block';
+}
+
 // ── MODALS ────────────────────────────────────────────────────
 function showModal(id)  { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }

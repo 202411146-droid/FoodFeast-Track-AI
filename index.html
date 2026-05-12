@@ -251,7 +251,20 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="field-sm"><label>Quantity</label><input id="mQty" placeholder="e.g. 2 bags" /></div>
+      <div class="field-sm"><label>Quantity</label>
+        <div class="qty-field-row">
+          <input id="mQty" type="number" placeholder="1" min="0.1" step="0.1" value="1" />
+          <select id="mQtyUnit">
+            <option value="pcs">pcs</option>
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="L">L</option>
+            <option value="tbsp">tbsp</option>
+            <option value="cup">cup</option>
+          </select>
+        </div>
+      </div>
       <div class="field-sm"><label>Expiry date</label><input id="mExp" type="date" /></div>
     </div>
     <div class="modal-actions">

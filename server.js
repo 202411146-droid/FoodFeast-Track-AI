@@ -132,6 +132,94 @@ app.post('/api/verify-otp', (req, res) => {
   res.json({ verified: true });
 });
 
+
+// ── FORGOT PASSWORD: SEND RESET LINK ─────────────────────────
+const pendingResets = new Map();
+const RESET_TTL_MS  = 15 * 60 * 1000; // 15 minutes
+
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  const token     = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + RESET_TTL_MS;
+  pendingResets.set(token, { email: email.toLowerCase(), expiresAt });
+
+  const resetUrl = (process.env.APP_URL || 'https://foodfeast-track-ai.up.railway.app') + '/reset-password?token=' + token;
+
+  try {
+    await sendBrevoEmail(email, 'Reset your FoodFeast password', `
+      <!DOCTYPE html>
+      <html><head><meta charset="UTF-8"></head>
+      <body style="margin:0;padding:0;background:#FAF6F0;font-family:'Helvetica Neue',Arial,sans-serif">
+        <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E2D0BB">
+          <div style="background:#C85A2A;padding:32px;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:26px;font-weight:800">FoodFeast <span style="font-weight:400">Track AI</span></h1>
+          </div>
+          <div style="padding:40px 36px;text-align:center">
+            <h2 style="color:#2C1A0E;font-size:20px;margin:0 0 8px">Reset your password</h2>
+            <p style="color:#8C6A4E;font-size:15px;line-height:1.6;margin:0 0 28px">Click the button below to set a new password. This link expires in <strong>15 minutes</strong>.</p>
+            <a href="${resetUrl}" style="display:inline-block;background:#C85A2A;color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:16px;font-weight:700;margin-bottom:24px">Reset Password</a>
+            <p style="color:#B89A80;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
+          </div>
+          <div style="background:#FAF6F0;padding:20px;text-align:center;border-top:1px solid #E2D0BB">
+            <p style="color:#B89A80;font-size:12px;margin:0">FoodFeast Track AI &mdash; Personalized nutrition &amp; food waste reduction</p>
+          </div>
+        </div>
+      </body></html>
+    `);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Reset email error:', err);
+    pendingResets.delete(token);
+    res.status(500).json({ error: 'Failed to send reset email. Please try again.' });
+  }
+});
+
+// ── FORGOT PASSWORD: VERIFY TOKEN ────────────────────────────
+app.get('/api/verify-reset-token', (req, res) => {
+  const { token } = req.query;
+  const record = pendingResets.get(token);
+  if (!record || Date.now() > record.expiresAt) {
+    return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
+  }
+  res.json({ email: record.email });
+});
+
+// ── FORGOT PASSWORD: SET NEW PASSWORD ────────────────────────
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return res.status(400).json({ error: 'Missing token or password' });
+
+  const record = pendingResets.get(token);
+  if (!record || Date.now() > record.expiresAt) {
+    return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
+  }
+
+  // Use Supabase admin to update password
+  const { createClient } = require('@supabase/supabase-js');
+  const adminDb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  // Get user by email
+  const { data: { users }, error: listErr } = await adminDb.auth.admin.listUsers();
+  if (listErr) return res.status(500).json({ error: 'Server error. Try again.' });
+
+  const user = users.find(u => u.email.toLowerCase() === record.email);
+  if (!user) return res.status(400).json({ error: 'No account found for this email.' });
+
+  const { error: updateErr } = await adminDb.auth.admin.updateUserById(user.id, { password: newPassword });
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  pendingResets.delete(token);
+  res.json({ success: true });
+});
+
+// ── SERVE RESET PASSWORD PAGE ─────────────────────────────────
+app.get('/reset-password', (req, res) => {
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
+  res.send(injectEnv(html));
+});
+
 // ── INJECT ENV & SERVE HTML ───────────────────────────────────
 function injectEnv(html) {
   const envScript = `

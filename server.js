@@ -147,6 +147,11 @@ function injectEnv(html) {
 }
 
 app.get('/', (req, res) => {
+  const html = fs.readFileSync(path.join(__dirname, 'landing.html'), 'utf-8');
+  res.send(injectEnv(html));
+});
+
+app.get('/app', (req, res) => {
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
   res.send(injectEnv(html));
 });

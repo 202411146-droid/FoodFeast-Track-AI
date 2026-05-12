@@ -197,7 +197,6 @@ app.post('/api/reset-password', async (req, res) => {
   }
 
   // Use Supabase admin to update password
-  const { createClient } = require('@supabase/supabase-js');
   const adminDb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   // Get user by email

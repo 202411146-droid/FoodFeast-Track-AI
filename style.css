@@ -1871,3 +1871,76 @@ button, a, input, select { touch-action: manipulation; }
   /* Prevent horizontal scroll */
   body { overflow-x: hidden; }
 }
+
+/* ===== BOTTOM NAV (mobile only) ===== */
+.bottom-nav { display: none; }
+
+@media (max-width: 600px) {
+
+  /* Hide desktop tabs on mobile */
+  .nav-tabs-desktop { display: none !important; }
+
+  /* Keep top nav clean: single row */
+  .nav {
+    height: 56px;
+    padding: 0 14px;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  /* Bottom nav bar */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 62px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 12px rgba(44,26,14,0.07);
+  }
+
+  .bottom-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 4px;
+    color: var(--muted);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav-btn.active {
+    color: var(--accent);
+  }
+  .bottom-nav-btn.active .bnav-icon {
+    transform: translateY(-2px);
+  }
+
+  .bnav-icon {
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 0.2s;
+  }
+  .bnav-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    font-family: 'Arial Narrow', Arial, sans-serif;
+  }
+
+  /* Push main content up so bottom nav doesn't overlap */
+  .app > main {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom) + 16px);
+  }
+
+  /* Greeting now has more breathing room */
+  .page-header { margin-bottom: 16px; }
+  .page-header h1 { font-size: 22px; }
+}

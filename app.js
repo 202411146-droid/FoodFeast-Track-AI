@@ -1303,6 +1303,28 @@ async function toggleFavorite(recipeName, btnEl) {
   }
 }
 
+async function loadSavedRecipeImages(recipes) {
+  for (let i = 0; i < recipes.length; i++) {
+    const r = recipes[i];
+    const card = document.querySelector(`.recipe-card[data-saved-index="${i}"]`);
+    if (!card) continue;
+    const imgBox = card.querySelector('.recipe-img');
+    if (!imgBox) continue;
+
+    // Use cached image if already fetched (e.g. from Recipes page)
+    const imgUrl = r._imgUrl || await getRecipeImageUrl(r);
+    r._imgUrl = imgUrl;
+    if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = imgUrl;
+
+    imgBox.classList.remove('loading');
+    if (imgUrl) {
+      imgBox.innerHTML = `<img src="${imgUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${r.emoji || '🍽️'}'">`;
+    } else {
+      imgBox.textContent = r.emoji || '🍽️';
+    }
+  }
+}
+
 function renderFavoritesGrid(rows) {
   const grid = document.getElementById('favoritesGrid');
   if (!rows.length) {
@@ -1313,14 +1335,14 @@ function renderFavoritesGrid(rows) {
   // Store in recipeStore so unsave works
   recipes.forEach(r => { recipeStore[r.name] = r; });
 
-  grid.innerHTML = recipes.map((r) => {
+  grid.innerHTML = recipes.map((r, i) => {
     const full = r.missingIngredients?.length === 0;
     const matchCls = full ? 'full' : 'partial';
     const matchTxt = full ? '✓ All ingredients available' : `⚠ ${r.missingIngredients?.length || 0} ingredient(s) missing`;
     const usedTags    = (r.usedIngredients || []).map(x => `<span class="rtag use">${x}</span>`).join('');
     const missingTags = (r.missingIngredients || []).map(x => `<span class="rtag missing">${x}</span>`).join('');
-    return `<div class="recipe-card" onclick="openRecipeData('${r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" style="cursor:pointer">
-      <div class="recipe-img">${r.emoji || '🍽️'}</div>
+    return `<div class="recipe-card" onclick="openRecipeData('${r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" style="cursor:pointer" data-saved-index="${i}">
+      <div class="recipe-img loading">${r.emoji || '🍽️'}</div>
       <div class="recipe-body">
         <div class="recipe-name">${r.name}</div>
         <div class="recipe-meta">
@@ -1335,6 +1357,10 @@ function renderFavoritesGrid(rows) {
         onclick="event.stopPropagation(); toggleFavorite(this.dataset.recipe, this)">❤️</button>
     </div>`;
   }).join('');
+
+  // Load unique food images for each saved recipe card
+  usedRecipeImages.clear();
+  loadSavedRecipeImages(recipes);
 }
 
 function renderRecipes(recipes) {

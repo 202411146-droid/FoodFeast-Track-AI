@@ -62,6 +62,7 @@ let _appEntered  = false;  // guard against double enterApp()
 
 // ── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  handleResetPasswordPage();
   const { data: { session } } = await db.auth.getSession();
   if (session) {
     // Only restore session if email is verified
@@ -373,22 +374,84 @@ function backFromForgot() {
 }
 
 async function doForgotPassword() {
-  const email  = document.getElementById('forgotEmail').value.trim();
-  const errEl  = document.getElementById('forgotErr');
-  const btn    = document.getElementById('forgotBtn');
-  const ok     = document.getElementById('forgotSuccess');
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotErr');
+  const btn   = document.getElementById('forgotBtn');
+  const ok    = document.getElementById('forgotSuccess');
   errEl.textContent = '';
   ok.style.display = 'none';
   if (!email) { errEl.textContent = 'Please enter your email.'; return; }
   btn.disabled = true;
   btn.textContent = 'Sending…';
-  const { error } = await db.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/app'
-  });
-  btn.disabled = false;
-  btn.textContent = 'Send Reset Link';
-  if (error) { errEl.textContent = error.message; return; }
-  ok.style.display = 'block';
+  try {
+    const r = await fetch('/api/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await r.json();
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+    if (!r.ok) { errEl.textContent = data.error || 'Failed to send. Try again.'; return; }
+    ok.style.display = 'block';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+    errEl.textContent = 'Network error. Please try again.';
+  }
+}
+
+// ── RESET PASSWORD PAGE (handles /reset-password?token=...) ──
+async function handleResetPasswordPage() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+  if (!token) return;
+
+  // Show reset password UI
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('forgotScreen').classList.add('hidden');
+  document.getElementById('resetPasswordScreen').classList.remove('hidden');
+
+  // Verify token is valid
+  const r = await fetch('/api/verify-reset-token?token=' + token);
+  if (!r.ok) {
+    document.getElementById('resetErr').textContent = 'This reset link is invalid or has expired.';
+    document.getElementById('resetSubmitBtn').disabled = true;
+  }
+}
+
+async function doResetPassword() {
+  const params   = new URLSearchParams(window.location.search);
+  const token    = params.get('token');
+  const pass     = document.getElementById('resetNewPass').value;
+  const confirm  = document.getElementById('resetConfirmPass').value;
+  const errEl    = document.getElementById('resetErr');
+  const btn      = document.getElementById('resetSubmitBtn');
+  errEl.textContent = '';
+
+  if (pass.length < 6)        { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pass !== confirm)       { errEl.textContent = 'Passwords do not match.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Updating…';
+  try {
+    const r = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword: pass })
+    });
+    const data = await r.json();
+    btn.disabled = false;
+    btn.textContent = 'Set New Password';
+    if (!r.ok) { errEl.textContent = data.error || 'Failed. Try again.'; return; }
+    // Success — redirect to app login
+    document.getElementById('resetSuccess').style.display = 'block';
+    setTimeout(() => { window.location.href = '/app'; }, 2000);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Set New Password';
+    errEl.textContent = 'Network error. Please try again.';
+  }
 }
 
 // ── MODALS ────────────────────────────────────────────────────

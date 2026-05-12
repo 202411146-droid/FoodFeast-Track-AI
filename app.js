@@ -622,6 +622,7 @@ function applyFilters(query, cat) {
 function openAddModal() {
   document.getElementById('mName').value = '';
   document.getElementById('mQty').value  = '1';
+  if (document.getElementById('mQtyUnit')) document.getElementById('mQtyUnit').value = 'pcs';
   document.getElementById('mExp').value  = '';
   document.getElementById('mCat').value  = 'produce';
   showModal('addItemModal');
@@ -631,7 +632,9 @@ function openAddModal() {
 async function saveItem() {
   const name = document.getElementById('mName').value.trim();
   const cat  = document.getElementById('mCat').value;
-  const qty  = document.getElementById('mQty').value.trim() || '1';
+  const qtyNum  = document.getElementById('mQty').value.trim() || '1';
+  const qtyUnit = document.getElementById('mQtyUnit')?.value || 'pcs';
+  const qty = `${qtyNum} ${qtyUnit}`;
   const exp  = document.getElementById('mExp').value || null;
 
   if (!name) { showToast('Please enter an item name.', 'danger'); return; }

@@ -326,9 +326,10 @@ function setGreeting() {
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
-
+  document.querySelectorAll('[data-tab="' + name + '"]').forEach(el => el.classList.add('active'));
   if (name !== 'scan') stopCamera();
 }
 

@@ -1926,3 +1926,16 @@ button, a, input, select { touch-action: manipulation; }
   .page-header { margin-bottom: 16px; }
   .page-header h1 { font-size: 22px; }
 }
+
+/* ── FORGOT PASSWORD LINK ── */
+.forgot-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+}
+.forgot-link:hover { opacity: 0.75; }

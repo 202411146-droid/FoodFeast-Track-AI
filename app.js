@@ -11,6 +11,7 @@ function updateStrength(val) {
   const hLen  = document.getElementById('hint-len');
   const hUp   = document.getElementById('hint-upper');
   const hNum  = document.getElementById('hint-num');
+  const hSpec = document.getElementById('hint-spec');
   if (!bar) return;
 
   const hasLen   = val.length >= 8;
@@ -21,6 +22,7 @@ function updateStrength(val) {
   hLen.style.color  = hasLen   ? '#22c55e' : '#aaa';
   hUp.style.color   = hasUpper ? '#22c55e' : '#aaa';
   hNum.style.color  = hasNum   ? '#22c55e' : '#aaa';
+  hSpec.style.color = hasSpec  ? '#22c55e' : '#aaa';
 
   const score = [hasLen, hasUpper, hasNum, hasSpec, val.length >= 12].filter(Boolean).length;
 
@@ -144,6 +146,7 @@ async function doSignUp() {
   if (password.length < 8)             { errEl.textContent = 'Password must be at least 8 characters.'; return; }
   if (!/[A-Z]/.test(password))         { errEl.textContent = 'Password must contain at least one uppercase letter.'; return; }
   if (!/[0-9]/.test(password))         { errEl.textContent = 'Password must contain at least one number.'; return; }
+  if (!/[^a-zA-Z0-9]/.test(password))  { errEl.textContent = 'Password must contain at least one special character (!@#$%^&*).'; return; }
   if (!tos)                            { errEl.textContent = 'Please accept the Terms of Service.'; return; }
 
   btn.textContent = 'Sending code…';
@@ -432,6 +435,7 @@ async function doResetPassword() {
   if (pass.length < 8)             { errEl.textContent = 'Password must be at least 8 characters.'; return; }
   if (!/[A-Z]/.test(pass))         { errEl.textContent = 'Password must contain at least one uppercase letter.'; return; }
   if (!/[0-9]/.test(pass))         { errEl.textContent = 'Password must contain at least one number.'; return; }
+  if (!/[^a-zA-Z0-9]/.test(pass))  { errEl.textContent = 'Password must contain at least one special character (!@#$%^&*).'; return; }
   if (pass !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
 
   btn.disabled = true;

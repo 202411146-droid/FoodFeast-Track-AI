@@ -538,13 +538,13 @@ function updateDashboard() {
       const d    = new Date(i.expiry_date + 'T12:00:00');
       const days = Math.ceil((d - today) / 86400000);
       const cls  = days <= 0 ? 'red' : days <= 2 ? 'red' : days <= 4 ? 'yellow' : 'green';
-      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const dateStr  = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const dayLabel = days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days left`;
       return `<div class="activity-item">
         <span>${i.emoji || '🥫'} ${i.name}</span>
-        <span class="exp-badge ${cls}" style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;">
-          <span style="font-size:11px;font-weight:700;">${dateStr}</span>
-          <span style="font-size:10px;opacity:0.8;">${dayLabel}</span>
+        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;">
+          <span class="exp-badge ${cls}" style="font-size:11px;font-weight:700;">${dateStr}</span>
+          <span style="font-size:11px;color:var(--muted2);white-space:nowrap;">${dayLabel}</span>
         </span>
       </div>`;
     }).join('');

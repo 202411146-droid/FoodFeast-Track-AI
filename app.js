@@ -429,8 +429,10 @@ async function doResetPassword() {
   const btn      = document.getElementById('resetSubmitBtn');
   errEl.textContent = '';
 
-  if (pass.length < 6)        { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  if (pass !== confirm)       { errEl.textContent = 'Passwords do not match.'; return; }
+  if (pass.length < 8)             { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (!/[A-Z]/.test(pass))         { errEl.textContent = 'Password must contain at least one uppercase letter.'; return; }
+  if (!/[0-9]/.test(pass))         { errEl.textContent = 'Password must contain at least one number.'; return; }
+  if (pass !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
 
   btn.disabled = true;
   btn.textContent = 'Updating…';
@@ -444,7 +446,7 @@ async function doResetPassword() {
     btn.disabled = false;
     btn.textContent = 'Set New Password';
     if (!r.ok) { errEl.textContent = data.error || 'Failed. Try again.'; return; }
-    // Success — redirect to app login
+    // Password changed successfully — redirect to login
     document.getElementById('resetSuccess').style.display = 'block';
     setTimeout(() => { window.location.href = '/app'; }, 2000);
   } catch (err) {

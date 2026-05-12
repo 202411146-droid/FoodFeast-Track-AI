@@ -1675,36 +1675,16 @@ button, a, input, select { touch-action: manipulation; }
 /* ── NAV (mobile) ── */
 @media (max-width: 600px) {
   .nav {
-    height: auto;
-    padding: 10px 14px;
-    gap: 8px;
-    flex-wrap: wrap;
+    height: 56px;
+    padding: 0 14px;
+    gap: 10px;
+    flex-wrap: nowrap;
     position: sticky;
     top: 0;
     z-index: 100;
   }
 
   .nav-brand { font-size: 14px; }
-
-  /* Scrollable tab bar */
-  .nav-tabs {
-    order: 3;
-    width: 100%;
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-
-  .tab-btn {
-    flex-shrink: 0;
-    font-size: 13px;
-    padding: 7px 12px;
-    min-height: 36px;
-  }
 
   /* Collapse email display */
   #userEmailDisplay { display: none; }
@@ -1879,14 +1859,6 @@ button, a, input, select { touch-action: manipulation; }
 
   /* Hide desktop tabs on mobile */
   .nav-tabs-desktop { display: none !important; }
-
-  /* Keep top nav clean: single row */
-  .nav {
-    height: 56px;
-    padding: 0 14px;
-    flex-wrap: nowrap;
-    gap: 10px;
-  }
 
   /* Bottom nav bar */
   .bottom-nav {

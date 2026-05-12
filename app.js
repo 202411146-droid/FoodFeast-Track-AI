@@ -1177,46 +1177,60 @@ Start with [ and end with ]. No extra text, no markdown fences.`
 // ── RECIPE IMAGE GENERATION (Unsplash — no API key needed) ──────
 const recipeImageCache = {};
 
-function getRecipeImageUrl(recipe) {
-  // Use Loremflickr — free, no key, no CORS issues, food-specific real photos
-  // imageQuery comes from Gemini, falls back to recipe name
-  const q = (recipe.imageQuery || recipe.name)
-    .replace(/[^a-zA-Z0-9 ]/g, '')
-    .trim()
-    .split(' ')
-    .slice(0, 3)
-    .join(',');
-  // Unique seed per recipe so images differ
-  const seed = [...q].reduce((a, c) => a + c.charCodeAt(0), 0);
-  return `https://loremflickr.com/600/400/${encodeURIComponent(q)},food?lock=${seed}`;
+async function getRecipeImageUrl(recipe) {
+  const query = (recipe.imageQuery || recipe.name)
+    .replace(/[^a-zA-Z0-9 ]/g, '').trim().split(' ').slice(0, 3).join(' ');
+
+  // 1. Try TheMealDB — exact food photo database, free, no key, CORS-safe
+  try {
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    const meal = data.meals?.[0];
+    if (meal?.strMealThumb) return meal.strMealThumb;
+  } catch(e) {}
+
+  // 2. Fallback: search by first word (broader match)
+  try {
+    const word = query.split(' ')[0];
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(word)}`);
+    const data = await res.json();
+    const meal = data.meals?.[0];
+    if (meal?.strMealThumb) return meal.strMealThumb;
+  } catch(e) {}
+
+  // 3. Fallback: TheMealDB category filter for a cooked food image
+  try {
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=Seafood`);
+    const data = await res.json();
+    const meals = data.meals || [];
+    // Pick a deterministic meal based on recipe name hash
+    const idx = [...recipe.name].reduce((a,c) => a + c.charCodeAt(0), 0) % meals.length;
+    if (meals[idx]?.strMealThumb) return meals[idx].strMealThumb;
+  } catch(e) {}
+
+  return null;
 }
 
 
-function loadRecipeImages(recipes) {
-  recipes.forEach((r, i) => {
+async function loadRecipeImages(recipes) {
+  for (let i = 0; i < recipes.length; i++) {
+    const r = recipes[i];
     const card = document.querySelector(`.recipe-card[data-index="${i}"]`);
-    if (!card) return;
+    if (!card) continue;
     const imgBox = card.querySelector('.recipe-img');
-    if (!imgBox) return;
+    if (!imgBox) continue;
 
-    const imgUrl = getRecipeImageUrl(r);
+    const imgUrl = await getRecipeImageUrl(r);
     r._imgUrl = imgUrl;
     if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = imgUrl;
 
-    const img = new Image();
-    img.alt = r.name;
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-    img.onload = () => {
-      imgBox.classList.remove('loading');
-      imgBox.innerHTML = '';
-      imgBox.appendChild(img);
-    };
-    img.onerror = () => {
-      imgBox.classList.remove('loading');
+    imgBox.classList.remove('loading');
+    if (imgUrl) {
+      imgBox.innerHTML = `<img src="${imgUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${r.emoji || '🍽️'}'">`;
+    } else {
       imgBox.textContent = r.emoji || '🍽️';
-    };
-    img.src = imgUrl;
-  });
+    }
+  }
 }
 
 // ── FAVORITES ─────────────────────────────────────────────────

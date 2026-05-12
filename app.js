@@ -679,6 +679,11 @@ async function toggleCamera() {
   try {
     scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     const video = document.getElementById('videoEl');
+
+    // Clear any previous captured image preview and scan overlay
+    document.getElementById('imgPreview')?.remove();
+    document.getElementById('scanOverlay')?.remove();
+
     video.srcObject = scanStream;
     video.style.display = 'block';
     // Hide only the placeholder content, keep the camera-box visible

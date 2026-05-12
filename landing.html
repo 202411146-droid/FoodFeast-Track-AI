@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FoodFeast Track AI — Eat Smarter. Waste Less.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --cream:#FAF6F0;
+  --cream2:#F0E8DC;
+  --brown:#2C1A0E;
+  --brown2:#6B4C35;
+  --orange:#C85A2A;
+  --orange2:#E8763D;
+  --orange-dim:rgba(200,90,42,0.10);
+  --green:#4A7C59;
+  --muted:#9C8878;
+  --border:#E2D0BB;
+  --white:#FFFFFF;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--cream);
+  color:var(--brown);
+  overflow-x:hidden;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;
+  z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 60px;
+  background:rgba(250,246,240,0.85);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(226,208,187,0.5);
+  transition:padding .3s;
+}
+.nav-brand{
+  display:flex;align-items:center;gap:12px;
+  text-decoration:none;
+}
+.nav-logo{width:38px;height:38px;object-fit:contain;}
+.nav-name{
+  font-family:'Playfair Display',serif;
+  font-size:18px;font-weight:700;
+  color:var(--orange);
+  line-height:1;
+}
+.nav-name span{color:var(--brown);font-weight:700;}
+.nav-links{display:flex;align-items:center;gap:32px;}
+.nav-links a{
+  font-size:14px;color:var(--brown2);text-decoration:none;
+  transition:color .2s;
+}
+.nav-links a:hover{color:var(--orange);}
+.nav-cta{
+  padding:10px 24px;
+  background:var(--orange);color:#fff;
+  border-radius:50px;font-size:14px;font-weight:500;
+  text-decoration:none;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  box-shadow:0 4px 14px rgba(200,90,42,.3);
+}
+.nav-cta:hover{background:var(--orange2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(200,90,42,.4);}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:flex;align-items:center;
+  padding:120px 60px 80px;
+  position:relative;
+  overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 60% at 80% 30%, rgba(200,90,42,.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 10% 80%, rgba(74,124,89,.06) 0%, transparent 60%);
+}
+/* floating food blobs */
+.blob{
+  position:absolute;border-radius:50%;
+  background:var(--orange);opacity:.06;
+  animation:float 8s ease-in-out infinite;
+}
+.blob1{width:500px;height:500px;top:-150px;right:-100px;animation-delay:0s;}
+.blob2{width:300px;height:300px;bottom:50px;left:-80px;animation-delay:3s;background:var(--green);}
+.blob3{width:180px;height:180px;top:40%;right:20%;animation-delay:5s;}
+@keyframes float{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-20px) scale(1.03);}}
+
+.hero-content{
+  position:relative;z-index:1;
+  max-width:620px;
+  animation:fadeUp .8s ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--orange-dim);
+  border:1px solid rgba(200,90,42,.2);
+  border-radius:50px;
+  padding:6px 16px;
+  font-size:12px;font-weight:500;color:var(--orange);
+  letter-spacing:.05em;text-transform:uppercase;
+  margin-bottom:28px;
+}
+.hero-badge span{font-size:14px;}
+
+.hero-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(48px,6vw,80px);
+  font-weight:900;
+  line-height:1.05;
+  color:var(--brown);
+  margin-bottom:24px;
+}
+.hero-title em{
+  font-style:italic;
+  color:var(--orange);
+  position:relative;
+}
+.hero-title em::after{
+  content:'';
+  position:absolute;left:0;bottom:-4px;
+  width:100%;height:3px;
+  background:var(--orange);
+  border-radius:2px;
+  opacity:.4;
+}
+
+.hero-sub{
+  font-size:18px;color:var(--brown2);
+  line-height:1.7;max-width:480px;
+  margin-bottom:40px;font-weight:300;
+}
+
+.hero-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.btn-main{
+  padding:16px 36px;
+  background:var(--orange);color:#fff;
+  border-radius:50px;font-size:16px;font-weight:500;
+  text-decoration:none;
+  box-shadow:0 6px 24px rgba(200,90,42,.35);
+  transition:all .2s;
+  display:inline-flex;align-items:center;gap:10px;
+}
+.btn-main:hover{background:var(--orange2);transform:translateY(-2px);box-shadow:0 10px 30px rgba(200,90,42,.45);}
+.btn-ghost{
+  padding:16px 36px;
+  border:1.5px solid var(--border);
+  border-radius:50px;font-size:16px;
+  color:var(--brown2);text-decoration:none;
+  transition:all .2s;
+  display:inline-flex;align-items:center;gap:10px;
+}
+.btn-ghost:hover{border-color:var(--orange);color:var(--orange);}
+
+.hero-right{
+  position:absolute;right:60px;top:50%;transform:translateY(-50%);
+  z-index:1;
+  animation:fadeUp .8s .2s ease both;
+}
+.hero-logo-wrap{
+  width:320px;height:320px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.hero-logo-wrap::before{
+  content:'';
+  position:absolute;inset:-20px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(200,90,42,.12) 0%, transparent 70%);
+  animation:pulse 3s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.05);opacity:.7;}}
+.hero-logo{width:280px;height:280px;object-fit:contain;filter:drop-shadow(0 20px 40px rgba(200,90,42,.25));}
+
+/* ── STATS ── */
+.stats{
+  background:var(--brown);
+  padding:56px 60px;
+  display:flex;justify-content:center;gap:80px;
+  flex-wrap:wrap;
+}
+.stat{text-align:center;}
+.stat-num{
+  font-family:'Playfair Display',serif;
+  font-size:48px;font-weight:900;
+  color:var(--orange2);
+  line-height:1;margin-bottom:6px;
+}
+.stat-label{font-size:13px;color:rgba(255,255,255,.5);letter-spacing:.06em;text-transform:uppercase;}
+
+/* ── FEATURES ── */
+.section{padding:100px 60px;}
+.section-label{
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--orange);font-weight:500;margin-bottom:12px;
+}
+.section-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(32px,4vw,52px);font-weight:700;
+  line-height:1.15;color:var(--brown);margin-bottom:16px;
+}
+.section-sub{font-size:16px;color:var(--muted);line-height:1.7;max-width:520px;margin-bottom:60px;}
+
+.features-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:24px;
+}
+.feat-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:36px 32px;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+  position:relative;overflow:hidden;
+}
+.feat-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--orange);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .3s;
+}
+.feat-card:hover{transform:translateY(-6px);box-shadow:0 16px 48px rgba(44,26,14,.1);border-color:var(--border);}
+.feat-card:hover::before{transform:scaleX(1);}
+.feat-icon{
+  width:52px;height:52px;
+  background:var(--orange-dim);
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;margin-bottom:20px;
+}
+.feat-title{font-size:17px;font-weight:500;color:var(--brown);margin-bottom:10px;}
+.feat-desc{font-size:14px;color:var(--muted);line-height:1.7;}
+
+/* ── HOW IT WORKS ── */
+.how{
+  background:var(--cream2);
+  padding:100px 60px;
+}
+.steps{display:flex;gap:0;position:relative;margin-top:60px;flex-wrap:wrap;}
+.steps::before{
+  content:'';
+  position:absolute;top:32px;left:calc(16.66% + 32px);right:calc(16.66% + 32px);
+  height:2px;background:var(--border);
+  z-index:0;
+}
+.step{
+  flex:1;min-width:160px;
+  text-align:center;padding:0 20px;
+  position:relative;z-index:1;
+}
+.step-num{
+  width:64px;height:64px;
+  background:var(--white);
+  border:2px solid var(--border);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;
+  font-family:'Playfair Display',serif;
+  font-size:22px;font-weight:700;color:var(--orange);
+  transition:all .3s;
+  box-shadow:0 4px 16px rgba(0,0,0,.06);
+}
+.step:hover .step-num{background:var(--orange);color:#fff;border-color:var(--orange);transform:scale(1.1);}
+.step-title{font-size:15px;font-weight:500;color:var(--brown);margin-bottom:8px;}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* ── QR SECTION ── */
+.qr-section{
+  padding:100px 60px;
+  display:flex;align-items:center;justify-content:center;gap:80px;
+  flex-wrap:wrap;
+}
+.qr-content{max-width:460px;}
+.qr-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:40px;
+  text-align:center;
+  box-shadow:0 8px 32px rgba(44,26,14,.08);
+  flex-shrink:0;
+}
+.qr-card-title{
+  font-family:'Playfair Display',serif;
+  font-size:16px;font-weight:700;color:var(--brown);
+  margin-bottom:4px;
+}
+.qr-card-sub{font-size:12px;color:var(--muted);margin-bottom:20px;}
+#qr-code{display:flex;justify-content:center;margin-bottom:16px;}
+#qr-code canvas,#qr-code img{border-radius:8px;}
+.qr-url{font-size:11px;color:var(--muted);}
+
+/* ── TESTIMONIALS ── */
+.testimonials{
+  background:var(--brown);
+  padding:100px 60px;
+}
+.testimonials .section-title{color:#fff;}
+.testimonials .section-sub{color:rgba(255,255,255,.5);}
+.testi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:50px;}
+.testi-card{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:32px;
+}
+.testi-stars{color:var(--orange2);font-size:14px;margin-bottom:16px;letter-spacing:2px;}
+.testi-text{font-size:15px;color:rgba(255,255,255,.8);line-height:1.7;margin-bottom:20px;font-style:italic;}
+.testi-author{font-size:13px;color:rgba(255,255,255,.4);font-weight:500;}
+
+/* ── CTA BANNER ── */
+.cta-banner{
+  padding:100px 60px;
+  text-align:center;
+  position:relative;overflow:hidden;
+}
+.cta-banner::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 50% 50%, rgba(200,90,42,.08) 0%, transparent 70%);
+}
+.cta-banner .section-title{position:relative;z-index:1;margin:0 auto 16px;}
+.cta-banner .section-sub{position:relative;z-index:1;margin:0 auto 40px;text-align:center;}
+.cta-banner .hero-actions{justify-content:center;position:relative;z-index:1;}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--brown);
+  padding:48px 60px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:24px;
+}
+.footer-brand{display:flex;align-items:center;gap:10px;}
+.footer-logo{width:32px;height:32px;object-fit:contain;opacity:.8;}
+.footer-name{
+  font-family:'Playfair Display',serif;
+  font-size:16px;font-weight:700;color:rgba(255,255,255,.8);
+}
+.footer-links{display:flex;gap:24px;}
+.footer-links a{font-size:13px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;}
+.footer-links a:hover{color:rgba(255,255,255,.8);}
+.footer-copy{font-size:12px;color:rgba(255,255,255,.3);}
+
+/* ── SCROLL REVEAL ── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  nav{padding:16px 24px;}
+  .nav-links{display:none;}
+  .hero{padding:100px 24px 60px;flex-direction:column;}
+  .hero-right{position:relative;right:auto;top:auto;transform:none;margin-top:40px;}
+  .hero-logo-wrap{width:200px;height:200px;}
+  .hero-logo{width:180px;height:180px;}
+  .stats{padding:48px 24px;gap:40px;}
+  .section,.how,.qr-section,.cta-banner,.testimonials{padding:70px 24px;}
+  .steps::before{display:none;}
+  .qr-section{flex-direction:column;gap:40px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">
+    <img src="FoodFeast_Track_AI_Logo.png" alt="Logo" class="nav-logo"/>
+    <div class="nav-name">FoodFeast <span>Track AI</span></div>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#qr">Get the App</a>
+  </div>
+  <a href="https://foodfeast-track-ai.up.railway.app/" class="nav-cta" target="_blank">Launch App →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge"><span>✦</span> AI-Powered Food Tracking</div>
+    <h1 class="hero-title">
+      Eat smarter.<br>
+      Waste <em>less.</em><br>
+      Live better.
+    </h1>
+    <p class="hero-sub">
+      Track your pantry, get AI-generated recipes from ingredients you already have, and never let food go to waste again.
+    </p>
+    <div class="hero-actions">
+      <a href="https://foodfeast-track-ai.up.railway.app/" class="btn-main" target="_blank">
+        🍽 Get Started Free
+      </a>
+      <a href="#how" class="btn-ghost">See how it works →</a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="hero-logo-wrap">
+      <img src="FoodFeast_Track_AI_Logo.png" alt="FoodFeast Track AI" class="hero-logo"/>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat reveal">
+    <div class="stat-num">AI</div>
+    <div class="stat-label">Powered Recipes</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-num">📸</div>
+    <div class="stat-label">Camera Food Scan</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-num">0</div>
+    <div class="stat-label">Food Wasted</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-num">∞</div>
+    <div class="stat-label">Recipe Ideas</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">What we offer</div>
+  <h2 class="section-title reveal">Everything you need<br>to manage your kitchen</h2>
+  <p class="section-sub reveal">From scanning groceries to generating recipes — all in one place.</p>
+
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <div class="feat-icon">📦</div>
+      <div class="feat-title">Smart Pantry Tracking</div>
+      <div class="feat-desc">Add, organize, and monitor all your food items with expiry dates, quantities, and categories at a glance.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">📸</div>
+      <div class="feat-title">AI Food Scanner</div>
+      <div class="feat-desc">Point your camera at any food item and our AI instantly identifies and logs it to your pantry — no typing needed.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🤖</div>
+      <div class="feat-title">Recipe Generation</div>
+      <div class="feat-desc">Gemini AI generates personalized recipes using ingredients nearing expiry, so nothing goes to waste.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">⏰</div>
+      <div class="feat-title">Expiry Alerts</div>
+      <div class="feat-desc">Get notified before your food expires. The dashboard highlights items expiring within 7 days.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">❤️</div>
+      <div class="feat-title">Save Favourites</div>
+      <div class="feat-desc">Bookmark your favourite AI-generated recipes and access them anytime, even offline.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🔒</div>
+      <div class="feat-title">Secure & Private</div>
+      <div class="feat-desc">Your data lives in your own Supabase project. No ads, no data selling, fully private.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-label">Simple process</div>
+  <h2 class="section-title reveal">From fridge to fork<br>in four steps</h2>
+  <p class="section-sub reveal">Getting started takes less than a minute.</p>
+
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <div class="step-title">Create Account</div>
+      <div class="step-desc">Sign up with your email and verify with a one-time code</div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <div class="step-title">Scan or Add Food</div>
+      <div class="step-desc">Use your camera or manually add items to your pantry</div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <div class="step-title">Get Recipes</div>
+      <div class="step-desc">Hit Generate and let AI create recipes from what you have</div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">4</div>
+      <div class="step-title">Cook & Enjoy</div>
+      <div class="step-desc">Follow the recipe, save favourites and waste nothing</div>
+    </div>
+  </div>
+</section>
+
+<!-- QR -->
+<section class="qr-section" id="qr">
+  <div class="qr-content">
+    <div class="section-label">Scan & Go</div>
+    <h2 class="section-title reveal">Open the app<br>on any device</h2>
+    <p class="section-sub reveal" style="margin-bottom:0;">
+      FoodFeast Track AI runs entirely in your browser — no install needed. Scan the QR code or visit the link directly on your phone, tablet, or desktop.
+    </p>
+  </div>
+  <div class="qr-card reveal">
+    <div class="qr-card-title">🍽 FoodFeast Track AI</div>
+    <div class="qr-card-sub">Scan to open the app</div>
+    <div id="qr-code"></div>
+    <div class="qr-url">foodfeast-track-ai.up.railway.app</div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials">
+  <div class="section-label" style="color:rgba(255,255,255,.4)">What users say</div>
+  <h2 class="section-title reveal">Real people.<br>Real results.</h2>
+  <p class="section-sub reveal">Join users who've cut their food waste and discovered new recipes.</p>
+  <div class="testi-grid">
+    <div class="testi-card reveal">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-text">"I used to throw away vegetables every week. Now I get recipe suggestions before anything expires. Game changer!"</div>
+      <div class="testi-author">— Maria S., Home Cook</div>
+    </div>
+    <div class="testi-card reveal">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-text">"The camera scanning is incredibly fast. I just point at my groceries and they're in my pantry instantly."</div>
+      <div class="testi-author">— James T., Busy Parent</div>
+    </div>
+    <div class="testi-card reveal">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-text">"Finally an app that actually helps me use what I buy. The AI recipes are surprisingly delicious too!"</div>
+      <div class="testi-author">— Ana R., Student</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-banner">
+  <div class="section-label">Start today</div>
+  <h2 class="section-title reveal">Ready to stop wasting food?</h2>
+  <p class="section-sub reveal">It's free. No download. Works on any device.</p>
+  <div class="hero-actions">
+    <a href="https://foodfeast-track-ai.up.railway.app/" class="btn-main" target="_blank">🍽 Launch FoodFeast Track AI</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <img src="FoodFeast_Track_AI_Logo.png" alt="Logo" class="footer-logo"/>
+    <div class="footer-name">FoodFeast Track AI</div>
+  </div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it Works</a>
+    <a href="https://foodfeast-track-ai.up.railway.app/" target="_blank">Launch App</a>
+  </div>
+  <div class="footer-copy">© 2025 FoodFeast Track AI. All rights reserved.</div>
+</footer>
+
+<script>
+// QR Code
+new QRCode(document.getElementById("qr-code"), {
+  text: "https://foodfeast-track-ai.up.railway.app/",
+  width: 200, height: 200,
+  colorDark: "#2C1A0E",
+  colorLight: "#ffffff",
+  correctLevel: QRCode.CorrectLevel.H
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Nav shrink on scroll
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').style.padding =
+    window.scrollY > 50 ? '12px 60px' : '18px 60px';
+});
+</script>
+</body>
+</html>

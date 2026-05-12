@@ -109,6 +109,13 @@ async function doLogin() {
   if (user && !user.email_confirmed_at) {
     await db.auth.signOut();
     errEl.textContent = 'Please verify your email before signing in.';
+    return;
+  }
+
+  // Explicitly enter app — onAuthStateChange is unreliable on mobile browsers
+  if (user) {
+    currentUser = user;
+    enterApp();
   }
 }
 

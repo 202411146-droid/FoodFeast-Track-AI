@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#C85A2A"/>
 <title>FoodFeast Track AI — Eat Smarter. Waste Less.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -370,6 +373,32 @@ footer{
   .section,.how,.qr-section,.cta-banner,.testimonials{padding:70px 24px;}
   .steps::before{display:none;}
   .qr-section{flex-direction:column;gap:40px;}
+}
+@media(max-width:480px){
+  nav{padding:12px 16px;}
+  .nav-cta{padding:8px 16px;font-size:13px;}
+  .hero{padding:80px 16px 40px;}
+  .hero-title{font-size:clamp(36px,10vw,56px);}
+  .hero-sub{font-size:15px;}
+  .hero-badge{font-size:11px;padding:5px 12px;}
+  .btn-main,.btn-ghost{padding:14px 24px;font-size:15px;width:100%;justify-content:center;}
+  .hero-actions{flex-direction:column;gap:10px;}
+  .hero-logo-wrap{width:160px;height:160px;}
+  .hero-logo{width:140px;height:140px;}
+  .stats{gap:24px;padding:36px 16px;}
+  .stat-num{font-size:36px;}
+  .section,.how,.cta-banner,.testimonials{padding:50px 16px;}
+  .qr-section{padding:50px 16px;gap:28px;}
+  .section-title{font-size:clamp(26px,8vw,40px);}
+  .section-sub{font-size:14px;}
+  .features-grid{grid-template-columns:1fr;gap:14px;}
+  .feat-card{padding:24px 20px;}
+  .steps{gap:28px;}
+  .step{min-width:100%;padding:0;}
+  .testi-grid{grid-template-columns:1fr;gap:14px;}
+  .qr-card{padding:28px 20px;}
+  footer{padding:32px 16px;flex-direction:column;gap:16px;text-align:center;}
+  .footer-links{justify-content:center;}
 }
 </style>
 </head>

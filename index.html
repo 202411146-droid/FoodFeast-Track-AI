@@ -44,7 +44,7 @@
           <label>Password</label>
           <div class="pass-wrap">
             <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" />
-            <button class="eye-btn" type="button" onclick="togglePass('loginPass',this)">👁</button>
+            <button class="eye-btn" type="button" onclick="togglePass('loginPass',this)"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
         </div>
         <p class="err-msg" id="loginErr"></p>
@@ -64,7 +64,7 @@
           <label>Password <span style="color:var(--muted);font-size:11px">(min. 8 chars, uppercase &amp; number)</span></label>
           <div class="pass-wrap">
             <input type="password" id="signupPass" placeholder="••••••••" oninput="updateStrength(this.value)" />
-            <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)">👁</button>
+            <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div id="strengthBar" style="margin-top:6px;height:5px;border-radius:4px;background:#e0e0e0;overflow:hidden;display:none">
             <div id="strengthFill" style="height:100%;width:0%;transition:width .3s,background .3s;border-radius:4px"></div>
@@ -80,7 +80,7 @@
           <label>Confirm password</label>
           <div class="pass-wrap">
             <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter') doSignUp()" />
-            <button class="eye-btn" type="button" onclick="togglePass('signupConfirm',this)">👁</button>
+            <button class="eye-btn" type="button" onclick="togglePass('signupConfirm',this)"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
         </div>
         <div class="tos-row">

@@ -1345,6 +1345,43 @@ main { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
 }
 .food-tag.selected .tag-calories { color: #b87000; }
 
+.tag-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  width: 100%;
+}
+.tag-qty-input {
+  width: 52px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  outline: none;
+}
+.tag-qty-input:focus { border-color: var(--accent); }
+.tag-unit-select {
+  padding: 3px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+.tag-unit-select:focus { border-color: var(--accent); }
+.food-tag.selected .tag-qty-input,
+.food-tag.selected .tag-unit-select {
+  border-color: var(--accent);
+  background: white;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 800px) {
   .stats-row { grid-template-columns: repeat(2, 1fr); }

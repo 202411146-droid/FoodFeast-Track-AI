@@ -48,6 +48,9 @@
           </div>
         </div>
         <p class="err-msg" id="loginErr"></p>
+        <div style="text-align:right;margin:-6px 0 10px">
+          <button type="button" class="forgot-link" onclick="showForgotPassword()">Forgot password?</button>
+        </div>
         <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
       </div>
       <!-- SIGN UP -->
@@ -123,6 +126,26 @@
     <button class="btn-outline" id="resendBtn" onclick="resendOTP()" style="margin-bottom:8px;width:100%">Resend Code</button>
     <button class="btn-outline" onclick="backToSignIn()" style="width:100%;margin-top:4px">Back to Sign In</button>
   </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD SCREEN -->
+<div id="forgotScreen" class="auth-wrap hidden">
+  <div class="auth-right">
+    <div class="auth-card" style="text-align:center">
+      <img src="FoodFeast_Track_AI_Logo.png" class="auth-logo-img" alt="logo" />
+      <div class="auth-logo">FoodFeast <span>Track AI</span></div>
+      <h2 style="font-size:20px;font-weight:700;margin:16px 0 6px">Reset Password</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Enter your email and we'll send you a reset link.</p>
+      <div class="field" style="text-align:left">
+        <label>Email address</label>
+        <input type="email" id="forgotEmail" placeholder="yourname@gmail.com" />
+      </div>
+      <p class="err-msg" id="forgotErr"></p>
+      <p id="forgotSuccess" style="color:green;font-size:13px;margin-bottom:10px;display:none">Check your email for a reset link!</p>
+      <button class="btn-primary" id="forgotBtn" onclick="doForgotPassword()" style="width:100%;margin-bottom:10px">Send Reset Link</button>
+      <button class="btn-outline" onclick="backFromForgot()" style="width:100%">Back to Sign In</button>
+    </div>
   </div>
 </div>
 

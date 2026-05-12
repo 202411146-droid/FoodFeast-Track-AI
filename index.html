@@ -11,68 +11,81 @@
 
 <!-- AUTH -->
 <div id="authScreen" class="auth-wrap">
-  <div class="auth-card">
+  <!-- LEFT: Logo & branding -->
+  <div class="auth-left">
+    <img src="FoodFeast_Track_AI_Logo.png" alt="FoodFeast Track AI Logo" class="auth-logo-img" />
     <div class="auth-logo">FoodFeast <span>Track AI</span></div>
     <p class="auth-sub">Personalized nutrition &amp; food waste reduction</p>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabSignIn" onclick="switchAuthTab('signin')">Sign In</button>
-      <button class="auth-tab" id="tabSignUp" onclick="switchAuthTab('signup')">Create Account</button>
-    </div>
-    <!-- SIGN IN -->
-    <div id="formSignIn">
-      <div class="field">
-        <label>Email address</label>
-        <input type="email" id="loginEmail" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter') document.getElementById('loginPass').focus()" />
+    <ul class="auth-features">
+      <li>✅ Access your pantry records</li>
+      <li>✅ Manage food inventory</li>
+      <li>✅ View nutrition &amp; recipes</li>
+      <li>✅ AI-powered food scanning</li>
+    </ul>
+  </div>
+  <!-- RIGHT: Form -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSignIn" onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab" id="tabSignUp" onclick="switchAuthTab('signup')">Create Account</button>
       </div>
-      <div class="field">
-        <label>Password</label>
-        <div class="pass-wrap">
-          <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" />
-          <button class="eye-btn" type="button" onclick="togglePass('loginPass',this)">👁</button>
+      <!-- SIGN IN -->
+      <div id="formSignIn">
+        <div class="field">
+          <label>Email address</label>
+          <input type="email" id="loginEmail" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter') document.getElementById('loginPass').focus()" />
         </div>
-      </div>
-      <p class="err-msg" id="loginErr"></p>
-      <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
-    </div>
-    <!-- SIGN UP -->
-    <div id="formSignUp" class="hidden">
-      <div class="field">
-        <label>Username</label>
-        <input type="text" id="signupUsername" placeholder="e.g. juandelacruz" autocomplete="username" />
-      </div>
-      <div class="field">
-        <label>Email address</label>
-        <input type="email" id="signupEmail" placeholder="yourname@gmail.com" />
-      </div>
-      <div class="field">
-        <label>Password <span style="color:var(--muted);font-size:11px">(min. 8 chars, uppercase &amp; number)</span></label>
-        <div class="pass-wrap">
-          <input type="password" id="signupPass" placeholder="••••••••" oninput="updateStrength(this.value)" />
-          <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)">👁</button>
+        <div class="field">
+          <label>Password</label>
+          <div class="pass-wrap">
+            <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" />
+            <button class="eye-btn" type="button" onclick="togglePass('loginPass',this)">👁</button>
+          </div>
         </div>
-        <div id="strengthBar" style="margin-top:6px;height:5px;border-radius:4px;background:#e0e0e0;overflow:hidden;display:none">
-          <div id="strengthFill" style="height:100%;width:0%;transition:width .3s,background .3s;border-radius:4px"></div>
+        <p class="err-msg" id="loginErr"></p>
+        <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+      </div>
+      <!-- SIGN UP -->
+      <div id="formSignUp" class="hidden">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="signupUsername" placeholder="e.g. juandelacruz" autocomplete="username" />
         </div>
-        <div id="strengthLabel" style="font-size:11px;margin-top:3px;color:var(--muted)"></div>
-        <ul id="strengthHints" style="font-size:11px;margin:4px 0 0 14px;padding:0;color:var(--muted);list-style:disc">
-          <li id="hint-len"  style="color:#aaa">At least 8 characters</li>
-          <li id="hint-upper" style="color:#aaa">At least one uppercase letter</li>
-          <li id="hint-num"  style="color:#aaa">At least one number</li>
-        </ul>
-      </div>
-      <div class="field">
-        <label>Confirm password</label>
-        <div class="pass-wrap">
-          <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter') doSignUp()" />
-          <button class="eye-btn" type="button" onclick="togglePass('signupConfirm',this)">👁</button>
+        <div class="field">
+          <label>Email address</label>
+          <input type="email" id="signupEmail" placeholder="yourname@gmail.com" />
         </div>
+        <div class="field">
+          <label>Password <span style="color:var(--muted);font-size:11px">(min. 8 chars, uppercase &amp; number)</span></label>
+          <div class="pass-wrap">
+            <input type="password" id="signupPass" placeholder="••••••••" oninput="updateStrength(this.value)" />
+            <button class="eye-btn" type="button" onclick="togglePass('signupPass',this)">👁</button>
+          </div>
+          <div id="strengthBar" style="margin-top:6px;height:5px;border-radius:4px;background:#e0e0e0;overflow:hidden;display:none">
+            <div id="strengthFill" style="height:100%;width:0%;transition:width .3s,background .3s;border-radius:4px"></div>
+          </div>
+          <div id="strengthLabel" style="font-size:11px;margin-top:3px;color:var(--muted)"></div>
+          <ul id="strengthHints" style="font-size:11px;margin:4px 0 0 14px;padding:0;color:var(--muted);list-style:disc">
+            <li id="hint-len"  style="color:#aaa">At least 8 characters</li>
+            <li id="hint-upper" style="color:#aaa">At least one uppercase letter</li>
+            <li id="hint-num"  style="color:#aaa">At least one number</li>
+          </ul>
+        </div>
+        <div class="field">
+          <label>Confirm password</label>
+          <div class="pass-wrap">
+            <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter') doSignUp()" />
+            <button class="eye-btn" type="button" onclick="togglePass('signupConfirm',this)">👁</button>
+          </div>
+        </div>
+        <div class="tos-row">
+          <input type="checkbox" id="tosCheck" />
+          <span>I agree to the <a href="#" onclick="showModal('tosModal');return false;">Terms of Service</a> and <a href="#" onclick="showModal('privacyModal');return false;">Privacy Policy</a></span>
+        </div>
+        <p class="err-msg" id="signupErr"></p>
+        <button class="btn-primary" id="signupBtn" onclick="doSignUp()">Send Verification Code</button>
       </div>
-      <div class="tos-row">
-        <input type="checkbox" id="tosCheck" />
-        <span>I agree to the <a href="#" onclick="showModal('tosModal');return false;">Terms of Service</a> and <a href="#" onclick="showModal('privacyModal');return false;">Privacy Policy</a></span>
-      </div>
-      <p class="err-msg" id="signupErr"></p>
-      <button class="btn-primary" id="signupBtn" onclick="doSignUp()">Send Verification Code</button>
     </div>
   </div>
 </div>

@@ -58,6 +58,7 @@ let pantryItems  = [];
 let scanStream   = null;
 let selectedFoodTags = new Set();
 let scanCount    = 0;
+let _appEntered  = false;  // guard against double enterApp()
 
 // ── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -79,8 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     currentUser = session?.user ?? null;
-    if (currentUser && currentUser.email_confirmed_at) enterApp();
-    else if (!currentUser) leaveApp();
+    if (currentUser && currentUser.email_confirmed_at) {
+      if (!_appEntered) enterApp();  // skip if doLogin() already called enterApp()
+    } else if (!currentUser) {
+      leaveApp();
+    }
   });
 });
 
@@ -275,6 +279,8 @@ async function resendOTP() {
 async function doLogout() {
   stopCamera();
   await db.auth.signOut();
+  // Explicitly call leaveApp — onAuthStateChange is unreliable on mobile
+  leaveApp();
 }
 
 function backToSignIn() {
@@ -298,6 +304,7 @@ function switchAuthTab(tab) {
 
 // ── APP ENTER / LEAVE ─────────────────────────────────────────
 function enterApp() {
+  _appEntered = true;
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
 
@@ -314,6 +321,8 @@ function enterApp() {
 }
 
 function leaveApp() {
+  if (!_appEntered) return;  // already left, don't run twice
+  _appEntered = false;
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
   pantryItems = [];

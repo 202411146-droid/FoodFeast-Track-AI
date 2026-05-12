@@ -218,8 +218,20 @@ app.post('/api/reset-password', async (req, res) => {
     const admin = getAdminDb();
 
     // Look up user directly by email (no pagination issues)
-    const { data, error: lookupErr } = await admin.auth.admin.getUserByEmail(record.email);
-    if (lookupErr || !data?.user) {
+    const { data, error: lookupErr } = await admin.auth.admin.listUsers();
+
+if (lookupErr) {
+  console.error('Lookup error:', lookupErr.message);
+  return res.status(500).json({ error: 'Failed to lookup user' });
+}
+
+const user = data.users.find(
+  u => u.email?.toLowerCase() === record.email.toLowerCase()
+);
+
+if (!user) {
+  return res.status(400).json({ error: 'No account found for this email.' });
+}
       console.error('Lookup error:', lookupErr?.message);
       return res.status(400).json({ error: 'No account found for this email.' });
     }

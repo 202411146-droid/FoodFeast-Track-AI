@@ -984,11 +984,36 @@ function showDetectedItems(items) {
     const today = new Date(); today.setHours(0,0,0,0);
     const daysLeft = exp ? Math.round((exp - today) / 86400000) : null;
     const urgency = daysLeft !== null ? (daysLeft <= 3 ? 'exp-urgent' : daysLeft <= 7 ? 'exp-warn' : 'exp-ok') : '';
+    const cal = item.calories_per_100g || 0;
     return `<div class="food-tag selected" data-index="${i}" onclick="toggleFoodTag(this, ${i})">
       <span class="tag-emoji">${item.emoji}</span>
       <span class="tag-name">${item.name}</span>
       ${expStr ? `<span class="tag-expiry ${urgency}">exp ${expStr}</span>` : ''}
-      ${item.calories_per_100g ? `<span class="tag-calories">${item.calories_per_100g} kcal/100g</span>` : ''}
+      <div class="tag-qty-row" onclick="event.stopPropagation()">
+        <input
+          type="number"
+          class="tag-qty-input"
+          data-index="${i}"
+          value="${item.quantity_amount || 1}"
+          min="0.1"
+          step="0.1"
+          oninput="updateItemQty(${i}, this.value, this.nextElementSibling.value)"
+        >
+        <select
+          class="tag-unit-select"
+          data-index="${i}"
+          onchange="updateItemQty(${i}, this.previousElementSibling.value, this.value)"
+        >
+          <option value="pcs" ${!item.quantity_unit || item.quantity_unit==='pcs' ? 'selected':''}>pcs</option>
+          <option value="g"   ${item.quantity_unit==='g'   ? 'selected':''}>g</option>
+          <option value="kg"  ${item.quantity_unit==='kg'  ? 'selected':''}>kg</option>
+          <option value="ml"  ${item.quantity_unit==='ml'  ? 'selected':''}>ml</option>
+          <option value="L"   ${item.quantity_unit==='L'   ? 'selected':''}>L</option>
+          <option value="tbsp"${item.quantity_unit==='tbsp'? 'selected':''}>tbsp</option>
+          <option value="cup" ${item.quantity_unit==='cup' ? 'selected':''}>cup</option>
+        </select>
+        ${cal ? `<span class="tag-calories" id="calLabel${i}">${Math.round(cal * (item.quantity_amount||1) / 100)} kcal</span>` : ''}
+      </div>
     </div>`;
   }).join('');
 
@@ -996,6 +1021,22 @@ function showDetectedItems(items) {
   items.forEach((_, i) => selectedFoodTags.add(i));
   section.classList.remove('hidden');
 }
+
+function updateItemQty(index, amount, unit) {
+  const item = scannedItems[index];
+  if (!item) return;
+  const qty = parseFloat(amount) || 1;
+  item.quantity_amount = qty;
+  item.quantity_unit   = unit;
+  item.quantity        = `${qty} ${unit}`;
+  // Update calorie label if present
+  const calLabel = document.getElementById(`calLabel${index}`);
+  if (calLabel && item.calories_per_100g) {
+    const multiplier = unit === 'g' ? qty / 100 : unit === 'kg' ? qty * 10 : qty / 100;
+    calLabel.textContent = Math.round(item.calories_per_100g * multiplier) + ' kcal';
+  }
+}
+
 
 function toggleFoodTag(el, i) {
   if (selectedFoodTags.has(i)) { selectedFoodTags.delete(i); el.classList.remove('selected'); }
@@ -1017,7 +1058,7 @@ async function addSelectedToPantry() {
     user_id: currentUser.id,
     name: item.name,
     category: item.category || 'other',
-    quantity: '1',
+    quantity: item.quantity || '1 pcs',
     emoji: item.emoji || '🥫',
     expiry_date: item.expiry_date || null
   }));

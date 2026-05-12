@@ -7,13 +7,18 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["food-tracking", "supabase", "ai"],
+  "keywords": [
+    "food-tracking",
+    "supabase",
+    "ai"
+  ],
   "author": "",
   "license": "MIT",
   "engines": {
     "node": "18"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.39.0"
   }
 }

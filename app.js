@@ -557,8 +557,11 @@ function updateDashboard() {
   } else {
     actEl.innerHTML = pantryItems.slice(0, 5).map(i => `
       <div class="activity-item">
-        <span>${i.emoji || '🥫'} ${i.name} <small style="color:var(--muted)">${i.quantity}</small></span>
-        <span style="font-size:11px;color:var(--muted2)">${formatDate(i.added_at)}</span>
+        <span>${i.emoji || '🥫'} ${i.name}</span>
+        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:6px;">${i.quantity}</span>
+          <span style="font-size:11px;color:var(--muted2);white-space:nowrap;">${formatDate(i.added_at)}</span>
+        </span>
       </div>`).join('');
   }
 }

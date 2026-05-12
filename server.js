@@ -1,4 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
+// Admin client initialised once at startup
+let adminDb = null;
+function getAdminDb() {
+  if (!adminDb) {
+    adminDb = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+  }
+  return adminDb;
+}
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -188,6 +200,9 @@ app.get('/api/verify-reset-token', (req, res) => {
 });
 
 // ── FORGOT PASSWORD: SET NEW PASSWORD ────────────────────────
+// Strategy: server sets a random temp password via admin API,
+// returns it to client, client signs in with temp pass,
+// then immediately calls updateUser() with the new password.
 app.post('/api/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token || !newPassword) return res.status(400).json({ error: 'Missing token or password' });
@@ -197,21 +212,28 @@ app.post('/api/reset-password', async (req, res) => {
     return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
   }
 
-  // Use Supabase admin to update password
-  const adminDb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const tempPass = crypto.randomBytes(16).toString('hex');
 
-  // Get user by email
-  const { data: { users }, error: listErr } = await adminDb.auth.admin.listUsers();
-  if (listErr) return res.status(500).json({ error: 'Server error. Try again.' });
+  try {
+    const admin = getAdminDb();
 
-  const user = users.find(u => u.email.toLowerCase() === record.email);
-  if (!user) return res.status(400).json({ error: 'No account found for this email.' });
+    // Look up user directly by email (no pagination issues)
+    const { data, error: lookupErr } = await admin.auth.admin.getUserByEmail(record.email);
+    if (lookupErr || !data?.user) {
+      console.error('Lookup error:', lookupErr?.message);
+      return res.status(400).json({ error: 'No account found for this email.' });
+    }
 
-  const { error: updateErr } = await adminDb.auth.admin.updateUserById(user.id, { password: newPassword });
-  if (updateErr) return res.status(500).json({ error: updateErr.message });
+    // Set temp password
+    const { error: updateErr } = await admin.auth.admin.updateUserById(data.user.id, { password: tempPass });
+    if (updateErr) throw updateErr;
 
-  pendingResets.delete(token);
-  res.json({ success: true });
+    pendingResets.delete(token);
+    res.json({ success: true, email: record.email, tempPass });
+  } catch (err) {
+    console.error('Reset password error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to reset password.' });
+  }
 });
 
 // ── SERVE RESET PASSWORD PAGE ─────────────────────────────────

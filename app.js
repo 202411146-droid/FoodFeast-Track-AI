@@ -1362,12 +1362,24 @@ async function toggleFavorite(recipeName, btnEl) {
 
 // Re-check missingIngredients against current pantry in real time
 function recalcRecipeIngredients(recipe) {
+  if (!pantryItems.length) return recipe;
+
   const pantryNames = pantryItems.map(p => p.name.toLowerCase().trim());
 
-  // An ingredient is "available" if any pantry item name contains it (or vice versa)
   function inPantry(ingredient) {
-    const ing = ingredient.toLowerCase().trim();
-    return pantryNames.some(p => p.includes(ing) || ing.includes(p));
+    const ing = ingredient.toLowerCase().trim()
+      .replace(/\(optional\)/gi, '').trim()
+      .replace(/^(fresh|dried|chopped|minced|sliced|ground|whole|raw|cooked)\s+/i, '').trim();
+
+    return pantryNames.some(p => {
+      // Exact match
+      if (p === ing) return true;
+      // Pantry item is contained in ingredient name (e.g. "lemon" in "lemon juice")
+      if (ing.includes(p) && p.length >= 3) return true;
+      // Ingredient is contained in pantry item name (e.g. "olive oil" matches "extra virgin olive oil")
+      if (p.includes(ing) && ing.length >= 3) return true;
+      return false;
+    });
   }
 
   const allIngredients = [

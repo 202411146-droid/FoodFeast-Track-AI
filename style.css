@@ -1815,18 +1815,28 @@ button, a, input, select { touch-action: manipulation; }
   .recipe-detail-meta { flex-wrap: wrap; gap: 8px; font-size: 12px; }
 }
 
-/* ── NOTIFICATION PANEL (mobile) ── */
+/* ── NOTIFICATION BELL & PANEL (mobile) ── */
 @media (max-width: 600px) {
+  /* Move bell right next to the avatar — push brand to left, group bell+chip to right */
+  .nav-brand { flex: 1; }
+
+  .notif-wrap { order: 2; }
+  .user-chip  { order: 3; }
+
+  /* Notification panel: full-screen overlay above everything */
   .notif-panel {
     position: fixed;
-    top: auto;
-    bottom: 0;
-    right: 0;
+    top: 56px;
     left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 70vh;
+    max-height: calc(100vh - 56px);
+    border-radius: 0;
     overflow-y: auto;
+    z-index: 9999 !important;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(44,26,14,0.18);
   }
 }
 

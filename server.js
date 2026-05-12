@@ -204,48 +204,83 @@ app.get('/api/verify-reset-token', (req, res) => {
 // returns it to client, client signs in with temp pass,
 // then immediately calls updateUser() with the new password.
 app.post('/api/reset-password', async (req, res) => {
-  const { token, newPassword } = req.body;
-  if (!token || !newPassword) return res.status(400).json({ error: 'Missing token or password' });
-
-  const record = pendingResets.get(token);
-  if (!record || Date.now() > record.expiresAt) {
-    return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
-  }
-
-  const tempPass = crypto.randomBytes(16).toString('hex');
-
   try {
-    const admin = getAdminDb();
+    const { email, otp, newPassword } = req.body;
 
-    // Look up user directly by email (no pagination issues)
-    const { data, error: lookupErr } = await admin.auth.admin.listUsers();
-
-if (lookupErr) {
-  console.error('Lookup error:', lookupErr.message);
-  return res.status(500).json({ error: 'Failed to lookup user' });
-}
-
-const user = data.users.find(
-  u => u.email?.toLowerCase() === record.email.toLowerCase()
-);
-
-if (!user) {
-  return res.status(400).json({ error: 'No account found for this email.' });
-}
-      console.error('Lookup error:', lookupErr?.message);
-      return res.status(400).json({ error: 'No account found for this email.' });
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        error: 'Email, OTP, and new password are required.'
+      });
     }
 
-    // Set temp password
-    const { error: updateErr } = await admin.auth.admin.updateUserById(data.user.id, { password: tempPass });
-    if (updateErr) throw updateErr;
+    // Check OTP record
+    const { data: record, error: otpError } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('email', email)
+      .eq('otp', otp)
+      .single();
 
-    pendingResets.delete(token);
-    res.json({ success: true, email: record.email, tempPass });
-  } catch (err) {
-    console.error('Reset password error:', err.message);
-    res.status(500).json({ error: err.message || 'Failed to reset password.' });
-  }
+    if (otpError || !record) {
+      return res.status(400).json({
+        error: 'Invalid OTP.'
+      });
+    }
+
+    // Check expiration
+    const now = new Date();
+    const expiresAt = new Date(record.expires_at);
+
+    if (now > expiresAt) {
+      return res.status(400).json({
+        error: 'OTP has expired.'
+      });
+    }
+
+    // Get all users from Supabase Auth
+    const { data, error: lookupErr } = await admin.auth.admin.listUsers();
+
+    if (lookupErr) {
+      console.error('Lookup error:', lookupErr.message);
+      return res.status(500).json({
+        error: 'Failed to lookup user.'
+      });
+    }
+
+    // Find matching email
+    const user = data.users.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase()
+    );
+
+    if (!user) {
+      return res.status(400).json({
+        error: 'No account found for this email.'
+      });
+    }
+
+    // Update password
+    const { error: updateErr } = await admin.auth.admin.updateUserById(
+      user.id,
+      {
+        password: newPassword
+      }
+    );
+
+    if (updateErr) {
+      console.error('Password update error:', updateErr.message);
+      return res.status(500).json({
+        error: 'Failed to update password.'
+      });
+    }
+
+    // Delete used OTP
+    await supabase
+      .from('password_resets')
+      .delete()
+      .eq('email', email);
+
+    return res.json({
+      success: true,
 });
 
 // ── SERVE RESET PASSWORD PAGE ─────────────────────────────────

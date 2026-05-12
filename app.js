@@ -1178,28 +1178,19 @@ const recipeImageCache = {};
 
 async function generateRecipeImage(recipeName) {
   if (recipeImageCache[recipeName]) return recipeImageCache[recipeName];
-  try {
-    // Build a short food-focused query from the recipe name
-    const query = encodeURIComponent(
-      recipeName.replace(/with|and|in|on|&/gi, '').replace(/\s+/g, ' ').trim().split(' ').slice(0, 5).join(' ') + ' food'
-    );
-    // Unsplash Source: free, no key, redirects to a real curated photo
-    const url = `https://source.unsplash.com/featured/600x400/?${query}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Unsplash ' + res.status);
-    const blob = await res.blob();
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    recipeImageCache[recipeName] = dataUrl;
-    return dataUrl;
-  } catch (err) {
-    console.warn('[RecipeImg] failed for', recipeName, err.message);
-    return null;
-  }
+
+  // Build search query from recipe name
+  const query = encodeURIComponent(
+    recipeName.replace(/(with|and|in|on)/gi, '').replace(/\s+/g, ' ').trim().split(' ').slice(0, 5).join(' ') + ' food dish'
+  );
+
+  // Use Unsplash directly as <img src> — avoids CORS (img tags are cross-origin safe)
+  // Add a random seed so each recipe gets a unique photo on each generate
+  const seed = Math.random().toString(36).slice(2, 7);
+  const url = `https://source.unsplash.com/featured/600x400/?${query}&sig=${seed}`;
+
+  recipeImageCache[recipeName] = url;
+  return url;
 }
 
 async function loadRecipeImages(recipes) {
@@ -1209,12 +1200,17 @@ async function loadRecipeImages(recipes) {
     if (!card) continue;
     const imgBox = card.querySelector('.recipe-img');
     if (!imgBox) continue;
-    const dataUrl = await generateRecipeImage(r.name);
+    const imgUrl = await generateRecipeImage(r.name);
     imgBox.classList.remove('loading');
-    if (dataUrl) {
-      imgBox.innerHTML = `<img src="${dataUrl}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;">`;
-      r._imgUrl = dataUrl;
-      if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = dataUrl;
+    if (imgUrl) {
+      const img = new Image();
+      img.alt = r.name;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.onload = () => { imgBox.innerHTML = ''; imgBox.appendChild(img); };
+      img.onerror = () => { imgBox.textContent = r.emoji || '🍽️'; };
+      img.src = imgUrl;
+      r._imgUrl = imgUrl;
+      if (recipeStore[r.name]) recipeStore[r.name]._imgUrl = imgUrl;
     } else {
       imgBox.textContent = r.emoji || '🍽️';
     }
